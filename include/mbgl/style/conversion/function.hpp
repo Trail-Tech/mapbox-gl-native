@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mbgl/style/function.hpp>
+#include <mbgl/style/function/zoom_function.hpp>
 #include <mbgl/style/conversion.hpp>
 #include <mbgl/style/conversion/constant.hpp>
 
@@ -9,9 +9,9 @@ namespace style {
 namespace conversion {
 
 template <class T>
-struct Converter<Function<T>> {
+struct Converter<ZoomFunction<T>> {
     template <class V>
-    Result<Function<T>> operator()(const V& value) const {
+    Result<ZoomFunction<T>> operator()(const V& value) const {
         if (!isObject(value)) {
             return Error { "function must be an object" };
         }
@@ -52,7 +52,7 @@ struct Converter<Function<T>> {
 
         auto baseValue = objectMember(value, "base");
         if (!baseValue) {
-            return Function<T>(stops, 1.0f);
+            return ZoomFunction<T>(stops, 1.0f);
         }
 
         optional<float> base = toNumber(*baseValue);
@@ -60,7 +60,7 @@ struct Converter<Function<T>> {
             return Error { "function base must be a number"};
         }
 
-        return Function<T>(stops, *base);
+        return ZoomFunction<T>(stops, *base);
     }
 };
 

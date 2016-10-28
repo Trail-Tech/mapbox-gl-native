@@ -14,7 +14,7 @@ std::string evaluate(PropertyValue<std::string> value, float zoom) {
     return value.evaluate(PropertyEvaluator<std::string>(PropertyEvaluationParameters(zoom), ""));
 }
 
-TEST(Function, Constant) {
+TEST(ZoomFunction, Constant) {
     EXPECT_EQ(2.0f, evaluate(2, 0));
     EXPECT_EQ(3.8f, evaluate(3.8, 0));
     EXPECT_EQ(22.0f, evaluate(22, 0));
@@ -26,9 +26,9 @@ TEST(Function, Constant) {
     EXPECT_EQ(22.0f, evaluate(22, 22));
 }
 
-TEST(Function, Stops) {
+TEST(ZoomFunction, Stops) {
     // Explicit constant slope in fringe regions.
-    Function<float> slope_1({ { 0, 1.5 }, { 6, 1.5 }, { 8, 3 }, { 22, 3 } }, 1.75);
+    ZoomFunction<float> slope_1({ { 0, 1.5 }, { 6, 1.5 }, { 8, 3 }, { 22, 3 } }, 1.75);
     EXPECT_EQ(1.5, evaluate(slope_1, 0));
     EXPECT_EQ(1.5, evaluate(slope_1, 4));
     EXPECT_EQ(1.5, evaluate(slope_1, 6));
@@ -40,7 +40,7 @@ TEST(Function, Stops) {
 
 
     // Test constant values in fringe regions.
-    Function<float> slope_2({ { 6, 1.5 }, { 8, 3 } }, 1.75);
+    ZoomFunction<float> slope_2({ { 6, 1.5 }, { 8, 3 } }, 1.75);
     EXPECT_EQ(1.5, evaluate(slope_2, 0));
     EXPECT_EQ(1.5, evaluate(slope_2, 4));
     EXPECT_EQ(1.5, evaluate(slope_2, 6));
@@ -51,14 +51,14 @@ TEST(Function, Stops) {
     EXPECT_EQ(3.0, evaluate(slope_2, 22));
 
     // Test no values.
-    Function<float> slope_3({}, 1.75);
+    ZoomFunction<float> slope_3({}, 1.75);
     EXPECT_EQ(1, evaluate(slope_3, 2));
     EXPECT_EQ(1, evaluate(slope_3, 6));
     EXPECT_EQ(1, evaluate(slope_3, 12));
 
 
     // Explicit constant slope in fringe regions.
-    Function<float> slope_4({ { 0, 2 }, { 8, 10 } }, 1);
+    ZoomFunction<float> slope_4({ { 0, 2 }, { 8, 10 } }, 1);
     EXPECT_EQ(2, evaluate(slope_4, 0));
     EXPECT_EQ(3, evaluate(slope_4, 1));
     EXPECT_EQ(4, evaluate(slope_4, 2));
@@ -66,7 +66,7 @@ TEST(Function, Stops) {
     EXPECT_EQ(10, evaluate(slope_4, 8));
 
     // discrete values
-    Function<std::string> discrete_0({{ 3, "string0"}, {6, "string1"}, {9, "string2"}}, 1);
+    ZoomFunction<std::string> discrete_0({{ 3, "string0"}, {6, "string1"}, {9, "string2"}}, 1);
     EXPECT_EQ("string0", evaluate(discrete_0, 2));
     EXPECT_EQ("string0", evaluate(discrete_0, 4));
     EXPECT_EQ("string1", evaluate(discrete_0, 7));

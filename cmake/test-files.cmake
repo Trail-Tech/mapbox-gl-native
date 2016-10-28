@@ -76,7 +76,11 @@ set(MBGL_TEST_FILES
 
     # style
     test/style/filter.test.cpp
-    test/style/functions.test.cpp
+
+    # style/function
+    test/style/function/zoom_function.test.cpp
+
+    # style
     test/style/source.test.cpp
     test/style/style.test.cpp
     test/style/style_layer.test.cpp

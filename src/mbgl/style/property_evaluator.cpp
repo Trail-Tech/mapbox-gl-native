@@ -35,7 +35,7 @@ template <> AlignmentType defaultStopsValue() { return {}; }
 template <> IconTextFitType defaultStopsValue() { return {}; };
 
 template <typename T>
-T PropertyEvaluator<T>::operator()(const Function<T>& fn) const {
+T PropertyEvaluator<T>::operator()(const ZoomFunction<T>& fn) const {
     float base = fn.getBase();
     const std::vector<std::pair<float, T>>& stops = fn.getStops();
     float z = parameters.z;
@@ -116,7 +116,7 @@ Faded<T> CrossFadedPropertyEvaluator<T>::operator()(const T& constant) const {
 }
 
 template <typename T>
-T getBiggestStopLessThan(const Function<T>& function, float z) {
+T getBiggestStopLessThan(const ZoomFunction<T>& function, float z) {
     const auto& stops = function.getStops();
     for (uint32_t i = 0; i < stops.size(); i++) {
         if (stops[i].first > z) {
@@ -127,7 +127,7 @@ T getBiggestStopLessThan(const Function<T>& function, float z) {
 }
 
 template <typename T>
-Faded<T> CrossFadedPropertyEvaluator<T>::operator()(const Function<T>& function) const {
+Faded<T> CrossFadedPropertyEvaluator<T>::operator()(const ZoomFunction<T>& function) const {
     return calculate(getBiggestStopLessThan(function, parameters.z - 1.0f),
                      getBiggestStopLessThan(function, parameters.z),
                      getBiggestStopLessThan(function, parameters.z + 1.0f));

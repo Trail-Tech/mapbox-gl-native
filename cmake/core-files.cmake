@@ -228,7 +228,6 @@ set(MBGL_CORE_FILES
     include/mbgl/style/conversion.hpp
     include/mbgl/style/filter.hpp
     include/mbgl/style/filter_evaluator.hpp
-    include/mbgl/style/function.hpp
     include/mbgl/style/layer.hpp
     include/mbgl/style/property_value.hpp
     include/mbgl/style/source.hpp
@@ -279,6 +278,9 @@ set(MBGL_CORE_FILES
     include/mbgl/style/conversion/property_value.hpp
     include/mbgl/style/conversion/source.hpp
     include/mbgl/style/conversion/tileset.hpp
+
+    # style/function
+    include/mbgl/style/function/zoom_function.hpp
 
     # style/layers
     include/mbgl/style/layers/background_layer.hpp
