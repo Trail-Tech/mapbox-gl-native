@@ -33,7 +33,7 @@ public:
                  const MapMode,
                  const GeometryTileLayer&,
                  const style::Filter&,
-                 style::SymbolLayoutProperties,
+                 style::SymbolLayoutProperties::Evaluated,
                  float textMaxSize,
                  SpriteAtlas&);
 
@@ -77,7 +77,7 @@ private:
     const float overscaling;
     const float zoom;
     const MapMode mode;
-    const style::SymbolLayoutProperties layout;
+    const style::SymbolLayoutProperties::Evaluated layout;
     const float textMaxSize;
 
     SpriteAtlas& spriteAtlas;
