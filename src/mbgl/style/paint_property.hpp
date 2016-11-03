@@ -9,6 +9,7 @@
 #include <mbgl/util/interpolate.hpp>
 #include <mbgl/util/indexed_tuple.hpp>
 #include <mbgl/util/ignore.hpp>
+#include <mbgl/gl/attribute.hpp>
 
 #include <unordered_map>
 #include <utility>

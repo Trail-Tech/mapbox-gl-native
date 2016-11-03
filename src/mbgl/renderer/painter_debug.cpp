@@ -12,6 +12,8 @@
 
 namespace mbgl {
 
+using namespace style;
+
 void Painter::renderTileDebug(const RenderTile& renderTile) {
     if (frame.debugOptions == MapDebugOptions::NoDebug)
         return;
@@ -29,7 +31,8 @@ void Painter::renderTileDebug(const RenderTile& renderTile) {
                 uniforms::u_matrix::Value{ renderTile.matrix },
                 uniforms::u_color::Value{ color }
             },
-            vertexBuffer
+            vertexBuffer,
+            PaintProperties<>::Evaluated()
         );
     };
 

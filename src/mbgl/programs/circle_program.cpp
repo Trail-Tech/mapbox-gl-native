@@ -2,6 +2,6 @@
 
 namespace mbgl {
 
-static_assert(sizeof(CircleProgram::Vertex) == 4, "expected CircleVertex size");
+static_assert(sizeof(CircleProgram::LayoutVertex) == 4, "expected CircleVertex size");
 
 } // namespace mbgl

@@ -42,6 +42,12 @@ public:
     const auto& get() const {
         return std::get<Index<I>>(*this);
     }
+
+    template <class... Js, class... Us>
+    IndexedTuple<TypeList<Is..., Js...>, TypeList<Ts..., Us...>>
+    concat(const IndexedTuple<TypeList<Js...>, TypeList<Us...>>& other) {
+        return { get<Is>()..., other.template get<Js>()... };
+    }
 };
 
 } // namespace mbgl

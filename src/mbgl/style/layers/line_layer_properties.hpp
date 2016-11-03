@@ -5,6 +5,7 @@
 #include <mbgl/style/types.hpp>
 #include <mbgl/style/layout_property.hpp>
 #include <mbgl/style/paint_property.hpp>
+#include <mbgl/programs/attributes.hpp>
 
 namespace mbgl {
 namespace style {
@@ -31,6 +32,7 @@ struct LineOpacity : PaintProperty<float> {
 
 struct LineColor : PaintProperty<Color> {
     static Color defaultValue() { return Color::black(); }
+    using Attribute = attributes::a_color;
 };
 
 struct LineTranslate : PaintProperty<std::array<float, 2>> {

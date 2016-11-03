@@ -5,24 +5,29 @@
 #include <mbgl/style/types.hpp>
 #include <mbgl/style/layout_property.hpp>
 #include <mbgl/style/paint_property.hpp>
+#include <mbgl/programs/attributes.hpp>
 
 namespace mbgl {
 namespace style {
 
 struct CircleRadius : PaintProperty<float> {
     static float defaultValue() { return 5; }
+    using Attribute = attributes::a_radius;
 };
 
 struct CircleColor : PaintProperty<Color> {
     static Color defaultValue() { return Color::black(); }
+    using Attribute = attributes::a_color;
 };
 
 struct CircleBlur : PaintProperty<float> {
     static float defaultValue() { return 0; }
+    using Attribute = attributes::a_blur;
 };
 
 struct CircleOpacity : PaintProperty<float> {
     static float defaultValue() { return 1; }
+    using Attribute = attributes::a_opacity;
 };
 
 struct CircleTranslate : PaintProperty<std::array<float, 2>> {

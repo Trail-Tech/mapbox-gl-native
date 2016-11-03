@@ -31,8 +31,8 @@ class CollisionBoxProgram : public Program<
 public:
     using Program::Program;
 
-    static Vertex vertex(Point<float> a, Point<float> o, float maxzoom, float placementZoom) {
-        return Vertex {
+    static LayoutVertex vertex(Point<float> a, Point<float> o, float maxzoom, float placementZoom) {
+        return LayoutVertex {
             {
                 static_cast<int16_t>(a.x),
                 static_cast<int16_t>(a.y)
@@ -49,6 +49,6 @@ public:
     }
 };
 
-using CollisionBoxVertex = CollisionBoxProgram::Vertex;
+using CollisionBoxVertex = CollisionBoxProgram::LayoutVertex;
 
 } // namespace mbgl

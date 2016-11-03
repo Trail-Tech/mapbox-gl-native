@@ -33,7 +33,8 @@ void Painter::renderLine(PaintParameters& parameters,
             std::move(uniformValues),
             *bucket.vertexBuffer,
             *bucket.indexBuffer,
-            bucket.segments
+            bucket.segments,
+            properties
         );
     };
 

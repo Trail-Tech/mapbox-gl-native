@@ -59,7 +59,8 @@ void Painter::renderSymbol(PaintParameters& parameters,
             std::move(uniformValues),
             *buffers.vertexBuffer,
             *buffers.indexBuffer,
-            buffers.segments
+            buffers.segments,
+            layer.impl->paint.evaluated
         );
     };
 
@@ -130,7 +131,8 @@ void Painter::renderSymbol(PaintParameters& parameters,
                 uniforms::u_zoom::Value{ float(state.getZoom() * 10) },
                 uniforms::u_maxzoom::Value{ float((tile.id.canonical.z + 1) * 10) },
             },
-            *bucket.collisionBox.vertexBuffer
+            *bucket.collisionBox.vertexBuffer,
+            style::PaintProperties<>::Evaluated()
         );
     }
 }
