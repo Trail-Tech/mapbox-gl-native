@@ -2,6 +2,7 @@
 
 #include <mbgl/util/variant.hpp>
 #include <mbgl/style/function/zoom_function.hpp>
+#include <mbgl/style/function/property_function.hpp>
 
 namespace mbgl {
 namespace style {
@@ -14,22 +15,30 @@ inline bool operator!=(const Undefined&, const Undefined&) { return false; }
 template <class T>
 class PropertyValue {
 private:
-    using Value = variant<Undefined, T, ZoomFunction<T>>;
+    using Value = variant<
+        Undefined,
+        T,
+        ZoomFunction<T>,
+        PropertyFunction<T>>;
+
     Value value;
 
     template <class S> friend bool operator==(const PropertyValue<S>&, const PropertyValue<S>&);
 
 public:
-    PropertyValue()                         : value()         {}
-    PropertyValue(             T  constant) : value(constant) {}
-    PropertyValue(ZoomFunction<T> function) : value(function) {}
+    PropertyValue()                             : value()         {}
+    PropertyValue(                 T  constant) : value(constant) {}
+    PropertyValue(    ZoomFunction<T> function) : value(function) {}
+    PropertyValue(PropertyFunction<T> function) : value(function) {}
 
-    bool isUndefined()     const { return value.which() == 0; }
-    bool isConstant()      const { return value.which() == 1; }
-    bool isZoomFunction()  const { return value.which() == 2; }
+    bool isUndefined()         const { return value.which() == 0; }
+    bool isConstant()          const { return value.which() == 1; }
+    bool isZoomFunction()      const { return value.which() == 2; }
+    bool isPropertyFunction()  const { return value.which() == 3; }
 
-    const              T & asConstant()     const { return value.template get<             T >(); }
-    const ZoomFunction<T>& asZoomFunction() const { return value.template get<ZoomFunction<T>>(); }
+    const                  T &         asConstant() const { return value.template get<                 T >(); }
+    const     ZoomFunction<T>&     asZoomFunction() const { return value.template get<    ZoomFunction<T>>(); }
+    const PropertyFunction<T>& asPropertyFunction() const { return value.template get<PropertyFunction<T>>(); }
 
     explicit operator bool() const { return !isUndefined(); };
 

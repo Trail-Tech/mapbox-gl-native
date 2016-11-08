@@ -280,6 +280,7 @@ set(MBGL_CORE_FILES
     include/mbgl/style/conversion/tileset.hpp
 
     # style/function
+    include/mbgl/style/function/property_function.hpp
     include/mbgl/style/function/zoom_function.hpp
 
     # style/layers
