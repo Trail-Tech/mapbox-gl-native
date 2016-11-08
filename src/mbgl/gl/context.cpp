@@ -513,7 +513,7 @@ void Context::draw(const Drawable& drawable) {
             auto it = vaos.find(vaoKey);
             if (it != vaos.end()) {
                 vertexArrayObject = it->second;
-                return false;
+                return true;
             }
 
             VertexArrayID id = 0;
