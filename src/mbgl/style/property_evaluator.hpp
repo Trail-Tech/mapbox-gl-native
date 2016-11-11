@@ -20,6 +20,7 @@ public:
     T operator()(const Undefined&) const { return defaultValue; }
     T operator()(const T& constant) const { return constant; }
     T operator()(const ZoomFunction<T>&) const;
+    T operator()(const PropertyFunction<T>&) const { return {}; }
 
 private:
     const PropertyEvaluationParameters& parameters;

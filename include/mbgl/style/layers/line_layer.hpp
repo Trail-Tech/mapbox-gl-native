@@ -50,9 +50,9 @@ public:
     PropertyValue<float> getLineOpacity(const optional<std::string>& klass = {}) const;
     void setLineOpacity(PropertyValue<float>, const optional<std::string>& klass = {});
 
-    static PropertyValue<Color> getDefaultLineColor();
-    PropertyValue<Color> getLineColor(const optional<std::string>& klass = {}) const;
-    void setLineColor(PropertyValue<Color>, const optional<std::string>& klass = {});
+    static DataDrivenPropertyValue<Color> getDefaultLineColor();
+    DataDrivenPropertyValue<Color> getLineColor(const optional<std::string>& klass = {}) const;
+    void setLineColor(DataDrivenPropertyValue<Color>, const optional<std::string>& klass = {});
 
     static PropertyValue<std::array<float, 2>> getDefaultLineTranslate();
     PropertyValue<std::array<float, 2>> getLineTranslate(const optional<std::string>& klass = {}) const;

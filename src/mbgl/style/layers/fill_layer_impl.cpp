@@ -21,7 +21,9 @@ bool FillLayer::Impl::evaluate(const PropertyEvaluationParameters& parameters) {
         passes |= RenderPass::Translucent;
     }
 
-    if (!paint.evaluated.get<FillPattern>().from.empty() || (paint.evaluated.get<FillColor>().a * paint.evaluated.get<FillOpacity>()) < 1.0f) {
+    if (!paint.unevaluated.get<FillPattern>().isUndefined()
+      || paint.evaluated.get<FillColor>().value_or(Color()).a < 1.0f
+      || paint.evaluated.get<FillOpacity>().value_or(0) < 1.0f) {
         passes |= RenderPass::Translucent;
     } else {
         passes |= RenderPass::Opaque;

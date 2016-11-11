@@ -51,7 +51,6 @@ void Painter::renderFill(PaintParameters& parameters,
                     tile.translatedMatrix(properties.get<FillTranslate>(),
                                           properties.get<FillTranslateAnchor>(),
                                           state),
-                    properties.get<FillOpacity>(),
                     context.viewport.getCurrentValue().size,
                     *imagePosA,
                     *imagePosB,
@@ -120,7 +119,8 @@ void Painter::renderFill(PaintParameters& parameters,
 
         // Only draw the fill when it's opaque and we're drawing opaque fragments,
         // or when it's translucent and we're drawing translucent fragments.
-        if ((properties.get<FillColor>().a >= 1.0f && properties.get<FillOpacity>() >= 1.0f) == (pass == RenderPass::Opaque)) {
+        if ((properties.get<FillColor>().value_or(Color()).a >= 1.0f
+          && properties.get<FillOpacity>().value_or(0) >= 1.0f) == (pass == RenderPass::Opaque)) {
             draw(1,
                  parameters.programs.fill,
                  gl::Triangles(),

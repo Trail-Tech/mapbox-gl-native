@@ -46,7 +46,6 @@ void Painter::renderBackground(PaintParameters& parameters, const BackgroundLaye
                 colorModeForRenderPass(),
                 FillPatternUniforms::values(
                     matrixForTile(tileID),
-                    background.get<BackgroundOpacity>(),
                     context.viewport.getCurrentValue().size,
                     *imagePosA,
                     *imagePosB,

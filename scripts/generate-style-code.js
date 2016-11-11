@@ -14,7 +14,20 @@ function parseCSSColor(str) {
   ];
 }
 
-global.propertyType = function (property) {
+global.isDataDriven = function (property) {
+  return [
+      'circle-color',
+      'circle-opacity',
+      'circle-radius',
+      'circle-blur',
+      'fill-color',
+      'fill-outline-color',
+      'fill-opacity',
+      'line-color'
+  ].indexOf(property.name) >= 0;
+};
+
+global.evaluatedType = function (property) {
   if (/-translate-anchor$/.test(property.name)) {
     return 'TranslateAnchorType';
   }
@@ -34,13 +47,31 @@ global.propertyType = function (property) {
     return `Color`;
   case 'array':
     if (property.length) {
-      return `std::array<${propertyType({type: property.value})}, ${property.length}>`;
+      return `std::array<${evaluatedType({type: property.value})}, ${property.length}>`;
     } else {
-      return `std::vector<${propertyType({type: property.value})}>`;
+      return `std::vector<${evaluatedType({type: property.value})}>`;
     }
   default: throw new Error(`unknown type for ${property.name}`)
   }
-}
+};
+
+global.paintPropertyType = function (property) {
+  if (isDataDriven(property)) {
+    return `DataDrivenPaintProperty<${evaluatedType(property)}>`;
+  } else if (/-pattern$/.test(property.name) || property.name === 'line-dasharray') {
+    return `CrossFadedPaintProperty<${evaluatedType(property)}>`;
+  } else {
+    return `PaintProperty<${evaluatedType(property)}>`;
+  }
+};
+
+global.propertyValueType = function (property) {
+  if (isDataDriven(property)) {
+    return `DataDrivenPropertyValue<${evaluatedType(property)}>`;
+  } else {
+    return `PropertyValue<${evaluatedType(property)}>`;
+  }
+};
 
 global.defaultValue = function (property) {
   // https://github.com/mapbox/mapbox-gl-native/issues/5258
@@ -59,9 +90,9 @@ global.defaultValue = function (property) {
     return JSON.stringify(property.default || "");
   case 'enum':
     if (property.default === undefined) {
-      return `${propertyType(property)}::Undefined`;
+      return `${evaluatedType(property)}::Undefined`;
     } else {
-      return `${propertyType(property)}::${camelize(property.default)}`;
+      return `${evaluatedType(property)}::${camelize(property.default)}`;
     }
   case 'color':
     var color = parseCSSColor(property.default).join(', ');

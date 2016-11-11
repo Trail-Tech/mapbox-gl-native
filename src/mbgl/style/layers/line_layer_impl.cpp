@@ -1,4 +1,5 @@
 #include <mbgl/style/layers/line_layer_impl.hpp>
+#include <mbgl/style/property_evaluation_parameters.hpp>
 #include <mbgl/style/bucket_parameters.hpp>
 #include <mbgl/renderer/line_bucket.hpp>
 #include <mbgl/geometry/feature_index.hpp>
@@ -20,7 +21,9 @@ bool LineLayer::Impl::evaluate(const PropertyEvaluationParameters& parameters) {
 
     paint.evaluate(parameters);
 
-    passes = (paint.evaluated.get<LineOpacity>() > 0 && paint.evaluated.get<LineColor>().a > 0 && paint.evaluated.get<LineWidth>() > 0)
+    passes = (paint.evaluated.get<LineOpacity>() > 0
+           && paint.evaluated.get<LineColor>().value_or(Color::black()).a > 0
+           && paint.evaluated.get<LineWidth>() > 0)
         ? RenderPass::Translucent : RenderPass::None;
 
     return paint.hasTransition();

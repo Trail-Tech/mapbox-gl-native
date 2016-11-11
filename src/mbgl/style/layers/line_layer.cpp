@@ -133,15 +133,15 @@ void LineLayer::setLineOpacity(PropertyValue<float> value, const optional<std::s
     impl->observer->onLayerPaintPropertyChanged(*this);
 }
 
-PropertyValue<Color> LineLayer::getDefaultLineColor() {
+DataDrivenPropertyValue<Color> LineLayer::getDefaultLineColor() {
     return { Color::black() };
 }
 
-PropertyValue<Color> LineLayer::getLineColor(const optional<std::string>& klass) const {
+DataDrivenPropertyValue<Color> LineLayer::getLineColor(const optional<std::string>& klass) const {
     return impl->paint.get<LineColor>(klass);
 }
 
-void LineLayer::setLineColor(PropertyValue<Color> value, const optional<std::string>& klass) {
+void LineLayer::setLineColor(DataDrivenPropertyValue<Color> value, const optional<std::string>& klass) {
     if (value == getLineColor(klass))
         return;
     impl->paint.set<LineColor>(value, klass);

@@ -2,9 +2,9 @@
 
 #include <mbgl/style/class_dictionary.hpp>
 #include <mbgl/style/property_evaluator.hpp>
+#include <mbgl/style/property_evaluation_parameters.hpp>
 #include <mbgl/style/transition_options.hpp>
 #include <mbgl/style/cascade_parameters.hpp>
-#include <mbgl/style/property_evaluation_parameters.hpp>
 #include <mbgl/util/constants.hpp>
 #include <mbgl/util/interpolate.hpp>
 #include <mbgl/util/indexed_tuple.hpp>
@@ -17,15 +17,13 @@
 namespace mbgl {
 namespace style {
 
-template <class T, class Evaluator>
+template <class Value>
 class UnevaluatedPaintProperty {
 public:
-    using Result = typename Evaluator::ResultType;
-
     UnevaluatedPaintProperty() = default;
 
-    UnevaluatedPaintProperty(PropertyValue<T> value_,
-                             UnevaluatedPaintProperty<T, Evaluator> prior_,
+    UnevaluatedPaintProperty(Value value_,
+                             UnevaluatedPaintProperty<Value> prior_,
                              TransitionOptions transition,
                              TimePoint now)
         : begin(now + transition.delay.value_or(Duration::zero())),
@@ -36,19 +34,20 @@ public:
         }
     }
 
-    Result evaluate(const PropertyEvaluationParameters& parameters, T defaultValue) {
-        Result finalValue = value.evaluate(Evaluator(parameters, defaultValue));
+    template <class Evaluator>
+    auto evaluate(const Evaluator& evaluator, TimePoint now) {
+        auto finalValue = value.evaluate(evaluator);
         if (!prior) {
             // No prior value.
             return finalValue;
-        } else if (parameters.now >= end) {
+        } else if (now >= end) {
             // Transition from prior value is now complete.
             prior = {};
             return finalValue;
         } else {
             // Interpolate between recursively-calculated prior value and final.
-            float t = std::chrono::duration<float>(parameters.now - begin) / (end - begin);
-            return util::interpolate(prior->get().evaluate(parameters, defaultValue), finalValue, util::DEFAULT_TRANSITION_EASE.solve(t, 0.001));
+            float t = std::chrono::duration<float>(now - begin) / (end - begin);
+            return util::interpolate(prior->get().evaluate(evaluator, now), finalValue, util::DEFAULT_TRANSITION_EASE.solve(t, 0.001));
         }
     }
 
@@ -61,26 +60,26 @@ public:
     }
 
 private:
-    optional<mapbox::util::recursive_wrapper<UnevaluatedPaintProperty<T, Evaluator>>> prior;
+    optional<mapbox::util::recursive_wrapper<UnevaluatedPaintProperty<Value>>> prior;
     TimePoint begin;
     TimePoint end;
-    PropertyValue<T> value;
+    Value value;
 };
 
-template <class T>
+template <class Value>
 class CascadingPaintProperty {
 public:
     bool isUndefined() const {
         return values.find(ClassID::Default) == values.end();
     }
 
-    const PropertyValue<T>& get(const optional<std::string>& klass) const {
-        static const PropertyValue<T> staticValue;
+    const Value& get(const optional<std::string>& klass) const {
+        static const Value staticValue;
         const auto it = values.find(klass ? ClassDictionary::Get().lookup(*klass) : ClassID::Default);
         return it == values.end() ? staticValue : it->second;
     }
 
-    void set(const PropertyValue<T>& value_, const optional<std::string>& klass) {
+    void set(const Value& value_, const optional<std::string>& klass) {
         values[klass ? ClassDictionary::Get().lookup(*klass) : ClassID::Default] = value_;
     }
 
@@ -91,7 +90,7 @@ public:
     template <class UnevaluatedPaintProperty>
     UnevaluatedPaintProperty cascade(const CascadeParameters& params, UnevaluatedPaintProperty prior) const {
         TransitionOptions transition;
-        PropertyValue<T> value;
+        Value value;
 
         for (const auto classID : params.classes) {
             if (values.find(classID) != values.end()) {
@@ -114,7 +113,7 @@ public:
     }
 
 private:
-    std::unordered_map<ClassID, PropertyValue<T>> values;
+    std::unordered_map<ClassID, Value> values;
     std::unordered_map<ClassID, TransitionOptions> transitions;
 };
 
@@ -122,19 +121,29 @@ template <class T>
 class PaintProperty {
 public:
     using ValueType = PropertyValue<T>;
-    using CascadingType = CascadingPaintProperty<T>;
+    using CascadingType = CascadingPaintProperty<ValueType>;
+    using UnevaluatedType = UnevaluatedPaintProperty<ValueType>;
     using EvaluatorType = PropertyEvaluator<T>;
-    using UnevaluatedType = UnevaluatedPaintProperty<T, EvaluatorType>;
     using EvaluatedType = T;
+};
+
+template <class T>
+class DataDrivenPaintProperty {
+public:
+    using ValueType = DataDrivenPropertyValue<T>;
+    using CascadingType = CascadingPaintProperty<ValueType>;
+    using UnevaluatedType = UnevaluatedPaintProperty<ValueType>;
+    using EvaluatorType = PropertyEvaluator<optional<T>>;
+    using EvaluatedType = optional<T>;
 };
 
 template <class T>
 class CrossFadedPaintProperty {
 public:
     using ValueType = PropertyValue<T>;
-    using CascadingType = CascadingPaintProperty<T>;
+    using CascadingType = CascadingPaintProperty<ValueType>;
+    using UnevaluatedType = UnevaluatedPaintProperty<ValueType>;
     using EvaluatorType = CrossFadedPropertyEvaluator<T>;
-    using UnevaluatedType = UnevaluatedPaintProperty<T, EvaluatorType>;
     using EvaluatedType = Faded<T>;
 };
 
@@ -183,7 +192,9 @@ public:
 
     template <class P>
     auto evaluate(const PropertyEvaluationParameters& parameters) {
-        return unevaluated.template get<P>().evaluate(parameters, P::defaultValue());
+        using Evaluator = typename P::EvaluatorType;
+        return unevaluated.template get<P>()
+            .evaluate(Evaluator(parameters, P::defaultValue()), parameters.now);
     }
 
     void evaluate(const PropertyEvaluationParameters& parameters) {

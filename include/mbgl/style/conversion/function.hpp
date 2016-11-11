@@ -8,6 +8,60 @@ namespace mbgl {
 namespace style {
 namespace conversion {
 
+template <class T, class V>
+Result<std::vector<std::pair<float, T>>> convertStops(const V& value) {
+    auto stopsValue = objectMember(value, "stops");
+    if (!stopsValue) {
+        return Error { "function value must specify stops" };
+    }
+
+    if (!isArray(*stopsValue)) {
+        return Error { "function stops must be an array" };
+    }
+
+    std::vector<std::pair<float, T>> stops;
+    for (std::size_t i = 0; i < arrayLength(*stopsValue); ++i) {
+        const auto& stopValue = arrayMember(*stopsValue, i);
+
+        if (!isArray(stopValue)) {
+            return Error { "function stop must be an array" };
+        }
+
+        if (arrayLength(stopValue) != 2) {
+            return Error { "function stop must have two elements" };
+        }
+
+        optional<float> z = toNumber(arrayMember(stopValue, 0));
+        if (!z) {
+            return Error { "function stop zoom level must be a number" };
+        }
+
+        Result<T> v = convert<T>(arrayMember(stopValue, 1));
+        if (!v) {
+            return v.error();
+        }
+
+        stops.emplace_back(*z, *v);
+    }
+
+    return stops;
+}
+
+template <class T, class V>
+Result<float> convertBase(const V& value) {
+    auto baseValue = objectMember(value, "base");
+    if (!baseValue) {
+        return 1.0f;
+    }
+
+    optional<float> base = toNumber(*baseValue);
+    if (!base) {
+        return Error { "function base must be a number"};
+    }
+
+    return *base;
+}
+
 template <class T>
 struct Converter<ZoomFunction<T>> {
     template <class V>
@@ -16,51 +70,49 @@ struct Converter<ZoomFunction<T>> {
             return Error { "function must be an object" };
         }
 
-        auto stopsValue = objectMember(value, "stops");
-        if (!stopsValue) {
-            return Error { "function value must specify stops" };
+        auto stops = convertStops<T>(value);
+        if (!stops) {
+            return stops.error();
         }
 
-        if (!isArray(*stopsValue)) {
-            return Error { "function stops must be an array" };
-        }
-
-        std::vector<std::pair<float, T>> stops;
-        for (std::size_t i = 0; i < arrayLength(*stopsValue); ++i) {
-            const auto& stopValue = arrayMember(*stopsValue, i);
-
-            if (!isArray(stopValue)) {
-                return Error { "function stop must be an array" };
-            }
-
-            if (arrayLength(stopValue) != 2) {
-                return Error { "function stop must have two elements" };
-            }
-
-            optional<float> z = toNumber(arrayMember(stopValue, 0));
-            if (!z) {
-                return Error { "function stop zoom level must be a number" };
-            }
-
-            Result<T> v = convert<T>(arrayMember(stopValue, 1));
-            if (!v) {
-                return v.error();
-            }
-
-            stops.emplace_back(*z, *v);
-        }
-
-        auto baseValue = objectMember(value, "base");
-        if (!baseValue) {
-            return ZoomFunction<T>(stops, 1.0f);
-        }
-
-        optional<float> base = toNumber(*baseValue);
+        auto base = convertBase<T>(value);
         if (!base) {
-            return Error { "function base must be a number"};
+            return base.error();
         }
 
-        return ZoomFunction<T>(stops, *base);
+        return ZoomFunction<T>(*stops, *base);
+    }
+};
+
+template <class T>
+struct Converter<PropertyFunction<T>> {
+    template <class V>
+    Result<PropertyFunction<T>> operator()(const V& value) const {
+        if (!isObject(value)) {
+            return Error { "function must be an object" };
+        }
+
+        auto stops = convertStops<T>(value);
+        if (!stops) {
+            return stops.error();
+        }
+
+        auto base = convertBase<T>(value);
+        if (!base) {
+            return base.error();
+        }
+
+        auto propertyValue = objectMember(value, "property");
+        if (!propertyValue) {
+            return Error { "function must specify property" };
+        }
+
+        auto propertyString = toString(*propertyValue);
+        if (!propertyString) {
+            return Error { "function property must be a string" };
+        }
+
+        return PropertyFunction<T>(*propertyString, *stops, *base);
     }
 };
 

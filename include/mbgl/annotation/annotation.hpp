@@ -31,15 +31,15 @@ public:
     ShapeAnnotationGeometry geometry;
     style::PropertyValue<float> opacity { 1.0f };
     style::PropertyValue<float> width { 1.0f };
-    style::PropertyValue<Color> color { Color::black() };
+    style::DataDrivenPropertyValue<Color> color { Color::black() };
 };
 
 class FillAnnotation {
 public:
     ShapeAnnotationGeometry geometry;
-    style::PropertyValue<float> opacity { 1.0f };
-    style::PropertyValue<Color> color { Color::black() };
-    style::PropertyValue<Color> outlineColor {};
+    style::DataDrivenPropertyValue<float> opacity { 1.0f };
+    style::DataDrivenPropertyValue<Color> color { Color::black() };
+    style::DataDrivenPropertyValue<Color> outlineColor {};
 };
 
 // An annotation whose type and properties are sourced from a style layer.

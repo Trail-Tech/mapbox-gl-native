@@ -26,21 +26,21 @@ public:
 
     // Paint properties
 
-    static PropertyValue<float> getDefaultCircleRadius();
-    PropertyValue<float> getCircleRadius(const optional<std::string>& klass = {}) const;
-    void setCircleRadius(PropertyValue<float>, const optional<std::string>& klass = {});
+    static DataDrivenPropertyValue<float> getDefaultCircleRadius();
+    DataDrivenPropertyValue<float> getCircleRadius(const optional<std::string>& klass = {}) const;
+    void setCircleRadius(DataDrivenPropertyValue<float>, const optional<std::string>& klass = {});
 
-    static PropertyValue<Color> getDefaultCircleColor();
-    PropertyValue<Color> getCircleColor(const optional<std::string>& klass = {}) const;
-    void setCircleColor(PropertyValue<Color>, const optional<std::string>& klass = {});
+    static DataDrivenPropertyValue<Color> getDefaultCircleColor();
+    DataDrivenPropertyValue<Color> getCircleColor(const optional<std::string>& klass = {}) const;
+    void setCircleColor(DataDrivenPropertyValue<Color>, const optional<std::string>& klass = {});
 
-    static PropertyValue<float> getDefaultCircleBlur();
-    PropertyValue<float> getCircleBlur(const optional<std::string>& klass = {}) const;
-    void setCircleBlur(PropertyValue<float>, const optional<std::string>& klass = {});
+    static DataDrivenPropertyValue<float> getDefaultCircleBlur();
+    DataDrivenPropertyValue<float> getCircleBlur(const optional<std::string>& klass = {}) const;
+    void setCircleBlur(DataDrivenPropertyValue<float>, const optional<std::string>& klass = {});
 
-    static PropertyValue<float> getDefaultCircleOpacity();
-    PropertyValue<float> getCircleOpacity(const optional<std::string>& klass = {}) const;
-    void setCircleOpacity(PropertyValue<float>, const optional<std::string>& klass = {});
+    static DataDrivenPropertyValue<float> getDefaultCircleOpacity();
+    DataDrivenPropertyValue<float> getCircleOpacity(const optional<std::string>& klass = {}) const;
+    void setCircleOpacity(DataDrivenPropertyValue<float>, const optional<std::string>& klass = {});
 
     static PropertyValue<std::array<float, 2>> getDefaultCircleTranslate();
     PropertyValue<std::array<float, 2>> getCircleTranslate(const optional<std::string>& klass = {}) const;

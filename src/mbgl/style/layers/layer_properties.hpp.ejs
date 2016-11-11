@@ -10,21 +10,23 @@
 #include <mbgl/style/types.hpp>
 #include <mbgl/style/layout_property.hpp>
 #include <mbgl/style/paint_property.hpp>
+#include <mbgl/programs/attributes.hpp>
 
 namespace mbgl {
 namespace style {
 
 <% for (const property of layoutProperties) { -%>
-struct <%- camelize(property.name) %> : LayoutProperty<<%- propertyType(property) %>> {
-    static <%- propertyType(property) %> defaultValue() { return <%- defaultValue(property) %>; }
+struct <%- camelize(property.name) %> : LayoutProperty<<%- evaluatedType(property) %>> {
+    static <%- evaluatedType(property) %> defaultValue() { return <%- defaultValue(property) %>; }
 };
 
 <% } -%>
 <% for (const property of paintProperties) { -%>
-struct <%- camelize(property.name) %> : <%
-if (/-pattern$/.test(property.name) || property.name === 'line-dasharray') {
-%>CrossFaded<% } -%>PaintProperty<<%- propertyType(property) %>> {
-    static <%- propertyType(property) %> defaultValue() { return <%- defaultValue(property) %>; }
+struct <%- camelize(property.name) %> : <%- paintPropertyType(property) %> {
+    static <%- evaluatedType(property) %> defaultValue() { return <%- defaultValue(property) %>; }
+<% if (isDataDriven(property)) { -%>
+    using Attribute = attributes::a_<%- property.name.replace(type + '-', '').replace('-', '_') %>;
+<% } -%>
 };
 
 <% } -%>

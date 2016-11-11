@@ -55,7 +55,6 @@ struct FillUniforms : gl::Uniforms<
 
 struct FillPatternUniforms : gl::Uniforms<
     uniforms::u_matrix,
-    uniforms::u_opacity,
     uniforms::u_world,
     uniforms::u_pattern_tl_a,
     uniforms::u_pattern_br_a,
@@ -72,7 +71,6 @@ struct FillPatternUniforms : gl::Uniforms<
     uniforms::u_tile_units_to_pixels>
 {
     static Values values(mat4 matrix,
-                         float opacity,
                          Size framebufferSize,
                          const SpriteAtlasPosition&,
                          const SpriteAtlasPosition&,
@@ -97,7 +95,9 @@ class FillPatternProgram : public Program<
     shaders::fill_pattern,
     gl::Triangle,
     FillAttributes,
-    FillPatternUniforms>
+    FillPatternUniforms,
+    style::PaintProperties<
+        style::FillOpacity>>
 {
     using Program::Program;
 };
@@ -118,7 +118,9 @@ class FillOutlinePatternProgram : public Program<
     shaders::fill_outline_pattern,
     gl::Line,
     FillAttributes,
-    FillPatternUniforms>
+    FillPatternUniforms,
+    style::PaintProperties<
+        style::FillOpacity>>
 {
     using Program::Program;
 };

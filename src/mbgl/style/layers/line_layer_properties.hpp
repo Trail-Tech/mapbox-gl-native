@@ -30,7 +30,7 @@ struct LineOpacity : PaintProperty<float> {
     static float defaultValue() { return 1; }
 };
 
-struct LineColor : PaintProperty<Color> {
+struct LineColor : DataDrivenPaintProperty<Color> {
     static Color defaultValue() { return Color::black(); }
     using Attribute = attributes::a_color;
 };

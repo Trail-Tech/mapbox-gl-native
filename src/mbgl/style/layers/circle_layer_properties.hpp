@@ -10,22 +10,22 @@
 namespace mbgl {
 namespace style {
 
-struct CircleRadius : PaintProperty<float> {
+struct CircleRadius : DataDrivenPaintProperty<float> {
     static float defaultValue() { return 5; }
     using Attribute = attributes::a_radius;
 };
 
-struct CircleColor : PaintProperty<Color> {
+struct CircleColor : DataDrivenPaintProperty<Color> {
     static Color defaultValue() { return Color::black(); }
     using Attribute = attributes::a_color;
 };
 
-struct CircleBlur : PaintProperty<float> {
+struct CircleBlur : DataDrivenPaintProperty<float> {
     static float defaultValue() { return 0; }
     using Attribute = attributes::a_blur;
 };
 
-struct CircleOpacity : PaintProperty<float> {
+struct CircleOpacity : DataDrivenPaintProperty<float> {
     static float defaultValue() { return 1; }
     using Attribute = attributes::a_opacity;
 };
