@@ -187,6 +187,7 @@ public:
 
     void addSource(const QString &sourceID, const QVariantMap& params);
     void removeSource(const QString &sourceID);
+    void updateSource(const QString &sourceID, const QVariantMap& params);
 
     void addImage(const QString &name, const QImage &sprite);
     void removeImage(const QString &name);
