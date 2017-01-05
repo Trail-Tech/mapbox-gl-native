@@ -1009,31 +1009,6 @@ void QMapboxGL::removeSource(const QString& sourceID)
     }
 }
 
-void QMapboxGL::updateSource(const QString &sourceID, const QVariantMap &params)
-{
-    using namespace mbgl::style;
-    using namespace mbgl::style::conversion;
-
-    Source* source = d_ptr->mapObj->getSource(sourceID.toStdString());
-    if (!source) {
-        qWarning() << "Unable to update source:" + sourceID ;
-        return;
-    }
-
-    //Convert data
-    //TODO: Add check to make sure data was in map
-    QVariant data = params["data"];
-
-    Result<mbgl::GeoJSON>  converted = convertGeoJSON(data);
-    if(!converted) {
-        qWarning() <<  "Error setting geo json: " << converted.error().message.c_str() ;
-        return;
-    }
-
-    //Update the core source
-    source->as<mbgl::style::GeoJSONSource>()->GeoJSONSource::setGeoJSON(*converted);
-}
-
 void QMapboxGL::addCustomLayer(const QString &id,
         QMapbox::CustomLayerInitializeFunction initFn,
         QMapbox::CustomLayerRenderFunction renderFn,
