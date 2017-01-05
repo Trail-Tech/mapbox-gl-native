@@ -5,6 +5,7 @@
 #include <QPair>
 #include <QVariant>
 #include <QString>
+#include <mapbox/geojsonvt.hpp>
 
 // This header follows the Qt coding style: https://wiki.qt.io/Qt_Coding_Style
 
@@ -22,6 +23,9 @@ typedef QPair<Coordinate, QString> PointAnnotation;
 
 // FIXME: We need to add support for custom style properties
 typedef QPair<LineString, QString> ShapeAnnotation;
+
+using QGeoJSONVT = mapbox::geojsonvt::GeoJSONVT;
+using QGeoJSONVTOptions = mapbox::geojsonvt::Options;
 
 // Reflects mbgl::NetworkStatus::Status.
 enum NetworkMode {

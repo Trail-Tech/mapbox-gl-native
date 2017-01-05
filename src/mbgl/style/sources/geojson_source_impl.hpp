@@ -20,6 +20,7 @@ public:
     optional<std::string> getURL();
 
     void setGeoJSON(const GeoJSON&);
+    void setGeoJSON(GeoJSONVTPointer);
     void setTileData(GeoJSONTile&, const OverscaledTileID& tileID);
 
     void loadDescription(FileSource&) final;
@@ -30,6 +31,7 @@ public:
 
 private:
     void _setGeoJSON(const GeoJSON&);
+    void _setGeoJSON(GeoJSONVTPointer);
 
     Range<uint8_t> getZoomRange() final;
     std::unique_ptr<Tile> createTile(const OverscaledTileID&, const UpdateParameters&) final;

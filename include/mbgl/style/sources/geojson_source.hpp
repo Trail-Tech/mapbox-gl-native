@@ -5,12 +5,9 @@
 #include <mbgl/util/optional.hpp>
 
 #include <mapbox/geojson.hpp>
+#include <mapbox/geojsonvt.hpp>
 
 namespace mapbox {
-
-namespace geojsonvt {
-class GeoJSONVT;
-} // namespace geojsonvt
 
 namespace supercluster {
 class Supercluster;
@@ -42,6 +39,7 @@ public:
 
     void setURL(const std::string& url);
     void setGeoJSON(const GeoJSON&);
+    void setGeoJSON(GeoJSONVTPointer data);
 
     optional<std::string> getURL();
 

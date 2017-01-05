@@ -975,6 +975,22 @@ void QMapboxGL::addSource(const QString &sourceID, const QVariantMap &params)
     d_ptr->mapObj->addSource(std::move(*source));
 }
 
+void QMapboxGL::addSource(const QString &sourceID, std::unique_ptr<QGeoJSONVT> data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    GeoJSONOptions options;
+    options.maxzoom = (*data).options.maxZoom;
+    options.buffer  = (*data).options.buffer;
+
+    auto source = std::make_unique<GeoJSONSource>(sourceID.toStdString(),options);
+    source->setGeoJSON(std::move(data));
+
+    d_ptr->mapObj->addSource(std::move(source));
+}
+
+
 void QMapboxGL::updateSource(const QString &sourceID, const QVariantMap &params)
 {
     using namespace mbgl::style;
@@ -998,6 +1014,26 @@ void QMapboxGL::updateSource(const QString &sourceID, const QVariantMap &params)
             sourceGeoJSON->setGeoJSON(*result);
         }
     }
+}
+
+void QMapboxGL::updateSource(const QString &sourceID, std::unique_ptr<QGeoJSONVT> data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = d_ptr->mapObj->getSource(sourceID.toStdString());
+    if (!source) {
+        addSource(sourceID, std::move(data));
+        return;
+    }
+
+    auto sourceGeoJSON = source->as<GeoJSONSource>();
+    if (!sourceGeoJSON) {
+        qWarning() << "Unable to update source: only GeoJSON sources are mutable.";
+        return;
+    }
+
+    sourceGeoJSON->setGeoJSON(std::move(data));
 }
 
 void QMapboxGL::removeSource(const QString& sourceID)

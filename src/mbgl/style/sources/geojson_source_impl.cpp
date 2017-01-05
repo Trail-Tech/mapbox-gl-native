@@ -88,6 +88,22 @@ void GeoJSONSource::Impl::_setGeoJSON(const GeoJSON& geoJSON) {
     }
 }
 
+void GeoJSONSource::Impl::setGeoJSON(GeoJSONVTPointer data) {
+    req.reset();
+    _setGeoJSON(std::move(data));
+}
+
+//Private implementation
+void GeoJSONSource::Impl::_setGeoJSON(GeoJSONVTPointer data) {
+    cache.clear();
+    geoJSONOrSupercluster = std::move(data);
+
+    for (auto const &item : tiles) {
+        GeoJSONTile* geoJSONTile = static_cast<GeoJSONTile*>(item.second.get());
+        setTileData(*geoJSONTile, geoJSONTile->id);
+    }
+}
+
 void GeoJSONSource::Impl::setTileData(GeoJSONTile& tile, const OverscaledTileID& tileID) {
     if (geoJSONOrSupercluster.is<GeoJSONVTPointer>()) {
         tile.updateData(geoJSONOrSupercluster.get<GeoJSONVTPointer>()->getTile(tileID.canonical.z,

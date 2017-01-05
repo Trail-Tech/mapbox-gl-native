@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QPointF>
 #include <QSize>
+#include <memory>
 
 class QImage;
 class QMargins;
@@ -214,7 +215,9 @@ public:
     QMargins margins() const;
 
     void addSource(const QString &sourceID, const QVariantMap& params);
+    void addSource(const QString &sourceID, std::unique_ptr<QMapbox::QGeoJSONVT> data);
     void updateSource(const QString &sourceID, const QVariantMap& params);
+    void updateSource(const QString &sourceID, std::unique_ptr<QMapbox::QGeoJSONVT> data);
     void removeSource(const QString &sourceID);
 
     void addImage(const QString &name, const QImage &sprite);
