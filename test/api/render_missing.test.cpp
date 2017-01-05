@@ -2,9 +2,9 @@
 #include <mbgl/test/fixture_log_observer.hpp>
 
 #include <mbgl/map/map.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/storage/default_file_source.hpp>
 #include <mbgl/util/image.hpp>
 #include <mbgl/util/io.hpp>
@@ -25,8 +25,8 @@ TEST(API, TEST_REQUIRES_SERVER(RenderMissingTile)) {
 
     const auto style = util::read_file("test/fixtures/api/water_missing_tiles.json");
 
-    HeadlessBackend backend;
-    OffscreenView view(backend.getContext(), { 256, 512 });
+    HeadlessBackend backend { test::sharedDisplay() };
+    OffscreenView view { backend.getContext(), { 256, 512 } };
 #ifdef MBGL_ASSET_ZIP
     // Regenerate with `cd test/fixtures/api/ && zip -r assets.zip assets/`
     DefaultFileSource fileSource(":memory:", "test/fixtures/api/assets.zip");

@@ -1,6 +1,7 @@
 // This file is generated. 
 // Edit platform/darwin/scripts/generate-style-code.js, then run `make style-code-darwin`.
 
+#import "MGLFoundation.h"
 #import "MGLStyleValue.h"
 #import "MGLVectorStyleLayer.h"
 
@@ -28,6 +29,7 @@ typedef NS_ENUM(NSUInteger, MGLFillTranslateAnchor) {
  `MGLMapView` for its `style` and obtain existing layers using the 
  `-[MGLStyle layerWithIdentifier:]` method. 
  */
+MGL_EXPORT
 @interface MGLFillStyleLayer : MGLVectorStyleLayer
 
 #pragma mark - Accessing the Paint Attributes
@@ -36,15 +38,13 @@ typedef NS_ENUM(NSUInteger, MGLFillTranslateAnchor) {
  Whether or not the fill should be antialiased.
  
  The default value of this property is an `MGLStyleValue` object containing an `NSNumber` object containing `YES`. Set this property to `nil` to reset it to the default value.
- */
-@property (nonatomic, null_resettable) MGLStyleValue<NSNumber *> *fillAntialias;
-
-/**
- The opacity of the entire fill layer. In contrast to the `fillColor`, this value will also affect the 1pt stroke around the fill, if the stroke is used.
  
- The default value of this property is an `MGLStyleValue` object containing an `NSNumber` object containing the float `1`. Set this property to `nil` to reset it to the default value.
+ This attribute corresponds to the <a href="https://www.mapbox.com/mapbox-gl-style-spec/#paint-fill-antialias"><code>fill-antialias</code></a> paint property in the Mapbox Style Specification.
  */
-@property (nonatomic, null_resettable) MGLStyleValue<NSNumber *> *fillOpacity;
+@property (nonatomic, null_resettable, getter=isFillAntialiased) MGLStyleValue<NSNumber *> *fillAntialiased;
+
+
+@property (nonatomic, null_resettable) MGLStyleValue<NSNumber *> *fillAntialias __attribute__((unavailable("Use fillAntialiased instead.")));
 
 #if TARGET_OS_IPHONE
 /**
@@ -67,11 +67,23 @@ typedef NS_ENUM(NSUInteger, MGLFillTranslateAnchor) {
 #endif
 
 /**
+ The opacity of the entire fill layer. In contrast to the `fillColor`, this value will also affect the 1pt stroke around the fill, if the stroke is used.
+ 
+ The default value of this property is an `MGLStyleValue` object containing an `NSNumber` object containing the float `1`. Set this property to `nil` to reset it to the default value.
+ */
+@property (nonatomic, null_resettable) MGLStyleValue<NSNumber *> *fillOpacity;
+
+/**
  The outline color of the fill. Matches the value of `fillColor` if unspecified.
 
- This property is only applied to the style if `fillPattern` is set to `nil`, and `fillAntialias` is set to an `MGLStyleValue` object containing an `NSNumber` object containing `YES`. Otherwise, it is ignored.
+ This property is only applied to the style if `fillPattern` is set to `nil`, and `fillAntialiased` is set to an `MGLStyleValue` object containing an `NSNumber` object containing `YES`. Otherwise, it is ignored.
  */
 @property (nonatomic, null_resettable) MGLStyleValue<MGLColor *> *fillOutlineColor;
+
+/**
+ Name of image in sprite to use for drawing image fills. For seamless patterns, image width and height must be a factor of two (2, 4, 8, ..., 512).
+ */
+@property (nonatomic, null_resettable) MGLStyleValue<NSString *> *fillPattern;
 
 /**
  The geometry's offset.
@@ -90,11 +102,6 @@ typedef NS_ENUM(NSUInteger, MGLFillTranslateAnchor) {
  This property is only applied to the style if `fillTranslate` is non-`nil`. Otherwise, it is ignored.
  */
 @property (nonatomic, null_resettable) MGLStyleValue<NSValue *> *fillTranslateAnchor;
-
-/**
- Name of image in sprite to use for drawing image fills. For seamless patterns, image width and height must be a factor of two (2, 4, 8, ..., 512).
- */
-@property (nonatomic, null_resettable) MGLStyleValue<NSString *> *fillPattern;
 
 @end
 

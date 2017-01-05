@@ -4,7 +4,10 @@
 #include <TargetConditionals.h>
 #endif
 
-#if TARGET_OS_IOS
+#if __ANDROID__
+#define TEST_READ_ONLY 0
+#define TEST_HAS_SERVER 0
+#elif TARGET_OS_IOS
 #define TEST_READ_ONLY 1
 #define TEST_HAS_SERVER 0
 #else
@@ -46,6 +49,7 @@
 #include <mbgl/util/chrono.hpp>
 
 #include <cstdint>
+#include <memory>
 
 #include <gtest/gtest.h>
 
@@ -53,6 +57,7 @@ namespace mbgl {
 
 class Map;
 class OffscreenView;
+class HeadlessDisplay;
 
 namespace test {
 
@@ -64,6 +69,8 @@ public:
 private:
     int fd = -1;
 };
+
+std::shared_ptr<HeadlessDisplay> sharedDisplay();
 
 PremultipliedImage render(Map&, OffscreenView&);
 

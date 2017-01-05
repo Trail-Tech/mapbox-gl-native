@@ -3,10 +3,10 @@
 #include <mbgl/test/fixture_log_observer.hpp>
 
 #include <mbgl/map/map.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
 #include <mbgl/storage/online_file_source.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/util/run_loop.hpp>
 
@@ -14,14 +14,15 @@
 
 using namespace mbgl;
 
+
 TEST(API, RenderWithoutCallback) {
     auto log = new FixtureLogObserver();
     Log::setObserver(std::unique_ptr<Log::Observer>(log));
 
     util::RunLoop loop;
 
-    HeadlessBackend backend;
-    OffscreenView view(backend.getContext(), { 128, 512 });
+    HeadlessBackend backend { test::sharedDisplay() };
+    OffscreenView view { backend.getContext(), { 128, 512 } };
     StubFileSource fileSource;
     ThreadPool threadPool(4);
 
@@ -45,8 +46,8 @@ TEST(API, RenderWithoutCallback) {
 TEST(API, RenderWithoutStyle) {
     util::RunLoop loop;
 
-    HeadlessBackend backend;
-    OffscreenView view(backend.getContext(), { 128, 512 });
+    HeadlessBackend backend { test::sharedDisplay() };
+    OffscreenView view { backend.getContext(), { 128, 512 } };
     StubFileSource fileSource;
     ThreadPool threadPool(4);
 

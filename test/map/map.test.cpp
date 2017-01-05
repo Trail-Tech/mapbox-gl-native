@@ -4,9 +4,9 @@
 #include <mbgl/test/fixture_log_observer.hpp>
 
 #include <mbgl/map/map.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/sprite/sprite_image.hpp>
 #include <mbgl/storage/network_status.hpp>
 #include <mbgl/storage/default_file_source.hpp>
@@ -23,7 +23,7 @@ using namespace std::literals::string_literals;
 
 struct MapTest {
     util::RunLoop runLoop;
-    HeadlessBackend backend;
+    HeadlessBackend backend { test::sharedDisplay() };
     OffscreenView view { backend.getContext() };
     StubFileSource fileSource;
     ThreadPool threadPool { 4 };
@@ -396,6 +396,18 @@ TEST(Map, RemoveImage) {
     test::checkImage("test/fixtures/map/remove_icon", test::render(map, test.view));
 }
 
+TEST(Map, GetImage) {
+    MapTest test;
+
+    Map map(test.backend, test.view.size, 1, test.fileSource, test.threadPool, MapMode::Still);
+    auto decoded = decodeImage(util::read_file("test/fixtures/sprites/default_marker.png"));
+    auto image = std::make_unique<SpriteImage>(std::move(decoded), 1.0);
+
+    map.setStyleJSON(util::read_file("test/fixtures/api/icon_style.json"));
+    map.addImage("test-icon", std::move(image));
+    test::checkImage("test/fixtures/map/get_icon", map.getImage("test-icon")->image);
+}
+
 TEST(Map, DontLoadUnneededTiles) {
     MapTest test;
 
@@ -447,6 +459,10 @@ TEST(Map, DontLoadUnneededTiles) {
 
 class MockBackend : public HeadlessBackend {
 public:
+    MockBackend(std::shared_ptr<HeadlessDisplay> display_)
+            : HeadlessBackend(display_) {
+    }
+
     std::function<void()> callback;
     void invalidate() override {
         if (callback) {
@@ -455,9 +471,9 @@ public:
     }
 };
 
-TEST(Map, ContinuousRendering) {
+TEST(Map, TEST_DISABLED_ON_CI(ContinuousRendering)) {
     util::RunLoop runLoop;
-    MockBackend backend;
+    MockBackend backend { test::sharedDisplay() };
     OffscreenView view { backend.getContext() };
     ThreadPool threadPool { 4 };
 

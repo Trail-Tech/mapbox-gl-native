@@ -7,7 +7,7 @@
 
 #include <mbgl/map/view.hpp>
 
-#include <mbgl/platform/log.hpp>
+#include <mbgl/util/logging.hpp>
 #include <mbgl/gl/debugging.hpp>
 
 #include <mbgl/style/style.hpp>
@@ -21,6 +21,7 @@
 #include <mbgl/geometry/line_atlas.hpp>
 #include <mbgl/text/glyph_atlas.hpp>
 
+#include <mbgl/programs/program_parameters.hpp>
 #include <mbgl/programs/programs.hpp>
 
 #include <mbgl/algorithm/generate_clip_ids.hpp>
@@ -41,31 +42,34 @@ namespace mbgl {
 
 using namespace style;
 
-static gl::VertexVector<FillVertex, gl::Triangles> tileTriangles() {
-    gl::VertexVector<FillVertex, gl::Triangles> result;
-    result.emplace_back(
-            FillAttributes::vertex({ 0,            0 }),
-            FillAttributes::vertex({ util::EXTENT, 0 }),
-            FillAttributes::vertex({ 0, util::EXTENT }));
-    result.emplace_back(
-            FillAttributes::vertex({ util::EXTENT, 0 }),
-            FillAttributes::vertex({ 0, util::EXTENT }),
-            FillAttributes::vertex({ util::EXTENT, util::EXTENT }));
-    return result;
-}
-
-static gl::VertexVector<FillVertex, gl::LineStrip> tileLineStrip() {
-    gl::VertexVector<FillVertex, gl::LineStrip> result;
-    result.emplace_back(FillAttributes::vertex({ 0, 0 }));
+static gl::VertexVector<FillVertex> tileVertices() {
+    gl::VertexVector<FillVertex> result;
+    result.emplace_back(FillAttributes::vertex({ 0,            0 }));
     result.emplace_back(FillAttributes::vertex({ util::EXTENT, 0 }));
-    result.emplace_back(FillAttributes::vertex({ util::EXTENT, util::EXTENT }));
     result.emplace_back(FillAttributes::vertex({ 0, util::EXTENT }));
-    result.emplace_back(FillAttributes::vertex({ 0, 0 }));
+    result.emplace_back(FillAttributes::vertex({ util::EXTENT, util::EXTENT }));
     return result;
 }
 
-static gl::VertexVector<RasterVertex, gl::TriangleStrip> rasterTriangleStrip() {
-    gl::VertexVector<RasterVertex, gl::TriangleStrip> result;
+static gl::IndexVector<gl::Triangles> tileTriangleIndices() {
+    gl::IndexVector<gl::Triangles> result;
+    result.emplace_back(0, 1, 2);
+    result.emplace_back(1, 2, 3);
+    return result;
+}
+
+static gl::IndexVector<gl::LineStrip> tileLineStripIndices() {
+    gl::IndexVector<gl::LineStrip> result;
+    result.emplace_back(0);
+    result.emplace_back(1);
+    result.emplace_back(3);
+    result.emplace_back(2);
+    result.emplace_back(0);
+    return result;
+}
+
+static gl::VertexVector<RasterVertex> rasterVertices() {
+    gl::VertexVector<RasterVertex> result;
     result.emplace_back(RasterProgram::vertex({ 0, 0 }, { 0, 0 }));
     result.emplace_back(RasterProgram::vertex({ util::EXTENT, 0 }, { 32767, 0 }));
     result.emplace_back(RasterProgram::vertex({ 0, util::EXTENT }, { 0, 32767 }));
@@ -73,19 +77,28 @@ static gl::VertexVector<RasterVertex, gl::TriangleStrip> rasterTriangleStrip() {
     return result;
 }
 
-Painter::Painter(gl::Context& context_, const TransformState& state_)
+Painter::Painter(gl::Context& context_, const TransformState& state_, float pixelRatio)
     : context(context_),
       state(state_),
-      tileTriangleVertexBuffer(context.createVertexBuffer(tileTriangles())),
-      tileLineStripVertexBuffer(context.createVertexBuffer(tileLineStrip())),
-      rasterVertexBuffer(context.createVertexBuffer(rasterTriangleStrip())) {
+      tileVertexBuffer(context.createVertexBuffer(tileVertices())),
+      rasterVertexBuffer(context.createVertexBuffer(rasterVertices())),
+      tileTriangleIndexBuffer(context.createIndexBuffer(tileTriangleIndices())),
+      tileBorderIndexBuffer(context.createIndexBuffer(tileLineStripIndices())) {
+
+    tileTriangleSegments.emplace_back(0, 0, 4, 6);
+    tileBorderSegments.emplace_back(0, 0, 4, 5);
+    rasterSegments.emplace_back(0, 0, 4, 6);
+
 #ifndef NDEBUG
     gl::debugging::enable();
 #endif
 
-    programs = std::make_unique<Programs>(context);
+    ProgramParameters programParameters{ pixelRatio, false };
+    programs = std::make_unique<Programs>(context, programParameters);
 #ifndef NDEBUG
-    overdrawPrograms = std::make_unique<Programs>(context, ProgramDefines::Overdraw);
+    
+    ProgramParameters programParametersOverdraw{ pixelRatio, true };
+    overdrawPrograms = std::make_unique<Programs>(context, programParametersOverdraw);
 #endif
 }
 
@@ -118,7 +131,7 @@ void Painter::render(const Style& style, const FrameData& frame_, View& view, Sp
     spriteAtlas = style.spriteAtlas.get();
     lineAtlas = style.lineAtlas.get();
 
-    RenderData renderData = style.getRenderData(frame.debugOptions);
+    RenderData renderData = style.getRenderData(frame.debugOptions, state.getAngle());
     const std::vector<RenderItem>& order = renderData.order;
     const std::unordered_set<Source*>& sources = renderData.sources;
 

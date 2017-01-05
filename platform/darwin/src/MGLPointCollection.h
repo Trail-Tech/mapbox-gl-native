@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
 
+#import "MGLFoundation.h"
 #import "MGLOverlay.h"
 #import "MGLShape.h"
 
@@ -11,10 +12,11 @@
  
  @note `MGLPointCollection` objects cannot be added to a map view using
  `-[MGLMapView addAnnotations:]` and related methods. However, when used in a
- `MGLPointCollectionFeature` to initialize a `MGLGeoJSONSource` that is added
+ `MGLPointCollectionFeature` to initialize a `MGLShapeSource` that is added
  to the map view's style, the point collection represents as a group of distinct 
  annotations.
  */
+MGL_EXPORT
 @interface MGLPointCollection : MGLShape <MGLOverlay>
 
 /**
@@ -26,7 +28,7 @@
  @param count The number of items in the `coords` array.
  @return A new point collection object.
  */
-+ (instancetype)pointCollectionWithCoordinates:(CLLocationCoordinate2D *)coords count:(NSUInteger)count;
++ (instancetype)pointCollectionWithCoordinates:(const CLLocationCoordinate2D *)coords count:(NSUInteger)count;
 
 /** The array of coordinates associated with the shape. */
 @property (nonatomic, readonly) CLLocationCoordinate2D *coordinates NS_RETURNS_INNER_POINTER;

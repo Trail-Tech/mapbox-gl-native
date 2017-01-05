@@ -20,8 +20,8 @@ void Painter::renderCircle(PaintParameters& parameters,
         return;
     }
 
-    const CirclePaintProperties& properties = layer.impl->paint;
-    const bool scaleWithMap = properties.circlePitchScale.value == CirclePitchScaleType::Map;
+    const CirclePaintProperties::Evaluated& properties = layer.impl->paint.evaluated;
+    const bool scaleWithMap = properties.get<CirclePitchScale>() == CirclePitchScaleType::Map;
 
     parameters.programs.circle.draw(
         context,
@@ -32,21 +32,25 @@ void Painter::renderCircle(PaintParameters& parameters,
             : gl::StencilMode::disabled(),
         colorModeForRenderPass(),
         CircleProgram::UniformValues {
-            uniforms::u_matrix::Value{ tile.translatedMatrix(properties.circleTranslate.value,
-                                       properties.circleTranslateAnchor.value,
-                                       state) },
-            uniforms::u_opacity::Value{ properties.circleOpacity.value },
-            uniforms::u_color::Value{ properties.circleColor.value },
-            uniforms::u_radius::Value{ properties.circleRadius.value },
-            uniforms::u_blur::Value{ properties.circleBlur.value },
+            uniforms::u_matrix::Value{
+                tile.translatedMatrix(properties.get<CircleTranslate>(),
+                                      properties.get<CircleTranslateAnchor>(),
+                                      state)
+            },
+            uniforms::u_opacity::Value{ properties.get<CircleOpacity>() },
+            uniforms::u_color::Value{ properties.get<CircleColor>() },
+            uniforms::u_radius::Value{ properties.get<CircleRadius>() },
+            uniforms::u_blur::Value{ properties.get<CircleBlur>() },
+            uniforms::u_stroke_color::Value{ properties.get<CircleStrokeColor>() },
+            uniforms::u_stroke_width::Value{ properties.get<CircleStrokeWidth>() },
+            uniforms::u_stroke_opacity::Value{ properties.get<CircleStrokeOpacity>() },
             uniforms::u_scale_with_map::Value{ scaleWithMap },
             uniforms::u_extrude_scale::Value{ scaleWithMap
                 ? std::array<float, 2> {{
-                    pixelsToGLUnits[0] * state.getAltitude(),
-                    pixelsToGLUnits[1] * state.getAltitude()
+                    pixelsToGLUnits[0] * state.getCameraToCenterDistance(),
+                    pixelsToGLUnits[1] * state.getCameraToCenterDistance()
                   }}
-                : pixelsToGLUnits },
-            uniforms::u_devicepixelratio::Value{ frame.pixelRatio },
+                : pixelsToGLUnits }
         },
         *bucket.vertexBuffer,
         *bucket.indexBuffer,

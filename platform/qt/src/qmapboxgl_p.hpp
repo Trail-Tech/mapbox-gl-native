@@ -5,7 +5,7 @@
 #include <mbgl/map/map.hpp>
 #include <mbgl/map/backend.hpp>
 #include <mbgl/map/view.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/storage/default_file_source.hpp>
 #include <mbgl/util/geo.hpp>
 
@@ -31,10 +31,6 @@ public:
     void invalidate() final;
     void notifyMapChange(mbgl::MapChange) final;
 
-#if QT_VERSION >= 0x050000
-    void updateFramebufferBinding(QOpenGLFramebufferObject *);
-#endif
-
     mbgl::EdgeInsets margins;
     QSize size { 0, 0 };
     QSize fbSize { 0, 0 };
@@ -54,5 +50,6 @@ public slots:
 
 signals:
     void needsRendering();
-    void mapChanged(QMapbox::MapChange);
+    void mapChanged(QMapboxGL::MapChange);
+    void copyrightsChanged(const QString &copyrightsHtml);
 };

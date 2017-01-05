@@ -10,20 +10,34 @@ if(NOT EXISTS ".mason/mason.cmake")
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 
+if(NOT EXISTS "mapbox-gl-js/package.json")
+   execute_process(
+        COMMAND git submodule update --init mapbox-gl-js
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
+
 include(.mason/mason.cmake)
 
 option(WITH_CXX11ABI "Use cxx11abi mason packages" OFF)
 option(WITH_COVERAGE "Enable coverage reports" OFF)
 option(WITH_OSMESA   "Use OSMesa headless backend" OFF)
+option(WITH_EGL      "Use EGL backend" OFF)
 option(IS_CI_BUILD   "Continuous integration build" OFF)
 
 if(WITH_CXX11ABI)
     set(MASON_CXXABI_SUFFIX -cxx11abi)
 endif()
 
+if(WITH_OSMESA AND WITH_EGL)
+    message(FATAL_ERROR "WITH_OSMESA and WITH_EGL are mutually exclusive.")
+endif()
+
 if(WITH_OSMESA)
     # Default mesa mason binary is OSMesa.
     set(MASON_MESA_SUFFIX "")
+elseif(WITH_EGL)
+    add_definitions(-DMBGL_USE_GLES2=1)
+    set(MASON_MESA_SUFFIX "-egl")
 else()
     set(MASON_MESA_SUFFIX "-glx")
 endif()
@@ -32,18 +46,21 @@ if(IS_CI_BUILD)
     add_compile_options(-DCI_BUILD=1)
 endif()
 
-mason_use(geometry VERSION 0.8.0 HEADER_ONLY)
-mason_use(variant VERSION 1.1.0 HEADER_ONLY)
+mason_use(geometry VERSION 0.9.0 HEADER_ONLY)
+mason_use(variant VERSION 1.1.4 HEADER_ONLY)
 mason_use(unique_resource VERSION dev HEADER_ONLY)
 mason_use(rapidjson VERSION 1.1.0 HEADER_ONLY)
-mason_use(boost VERSION 1.60.0 HEADER_ONLY)
+mason_use(boost VERSION 1.62.0 HEADER_ONLY)
 mason_use(geojsonvt VERSION 6.1.3 HEADER_ONLY)
 mason_use(supercluster VERSION 0.2.0 HEADER_ONLY)
 mason_use(kdbush VERSION 0.1.1 HEADER_ONLY)
 mason_use(earcut VERSION 0.12.1 HEADER_ONLY)
 mason_use(protozero VERSION 1.4.2 HEADER_ONLY)
 mason_use(pixelmatch VERSION 0.10.0 HEADER_ONLY)
-mason_use(geojson VERSION 0.3.2 HEADER_ONLY)
+mason_use(geojson VERSION 0.4.0 HEADER_ONLY)
+mason_use(polylabel VERSION 1.0.2 HEADER_ONLY)
+
+add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 
 if(WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")

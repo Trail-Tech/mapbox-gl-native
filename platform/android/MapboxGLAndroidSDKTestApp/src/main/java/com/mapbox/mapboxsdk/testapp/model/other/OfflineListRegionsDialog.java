@@ -6,7 +6,8 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AlertDialog;
-import android.util.Log;
+
+import timber.log.Timber;
 
 import com.mapbox.mapboxsdk.testapp.R;
 
@@ -14,35 +15,33 @@ import java.util.ArrayList;
 
 public class OfflineListRegionsDialog extends DialogFragment {
 
-    private static final String LOG_TAG = "OfflineListRegionsDialog";
+  public static final String ITEMS = "ITEMS";
 
-    public static final String ITEMS = "ITEMS";
+  @NonNull
+  @Override
+  public Dialog onCreateDialog(Bundle savedInstanceState) {
+    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(Bundle savedInstanceState) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+    // Read args
+    Bundle args = getArguments();
+    ArrayList<String> offlineRegionsNames = (args == null ? null : args.getStringArrayList(ITEMS));
+    CharSequence[] items = offlineRegionsNames.toArray(new CharSequence[offlineRegionsNames.size()]);
 
-        // Read args
-        Bundle args = getArguments();
-        ArrayList<String> offlineRegionsNames = (args == null ? null : args.getStringArrayList(ITEMS));
-        CharSequence[] items = offlineRegionsNames.toArray(new CharSequence[offlineRegionsNames.size()]);
+    builder.setTitle("List of offline regions")
+      .setIcon(R.drawable.ic_airplanemode_active_black_24dp)
+      .setItems(items, new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+          Timber.d("Selected item: " + which);
+        }
+      })
+      .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+          Timber.d("Dialog dismissed");
+        }
+      });
 
-        builder.setTitle("List of offline regions")
-                .setIcon(R.drawable.ic_airplanemode_active_black_24dp)
-                .setItems(items, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Log.d(LOG_TAG, "Selected item: " + which);
-                    }
-                })
-                .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Log.d(LOG_TAG, "Dialog dismissed");
-                    }
-                });
-
-        return builder.create();
-    }
+    return builder.create();
+  }
 }

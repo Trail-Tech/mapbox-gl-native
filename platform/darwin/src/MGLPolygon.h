@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
 
+#import "MGLFoundation.h"
 #import "MGLMultiPoint.h"
 #import "MGLOverlay.h"
 
@@ -14,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
  are provided. The first and last points are connected to each other to create
  the closed shape.
  */
+MGL_EXPORT
 @interface MGLPolygon : MGLMultiPoint <MGLOverlay>
 
 /**
@@ -36,7 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
  @param count The number of items in the `coords` array.
  @return A new polygon object.
  */
-+ (instancetype)polygonWithCoordinates:(CLLocationCoordinate2D *)coords count:(NSUInteger)count;
++ (instancetype)polygonWithCoordinates:(const CLLocationCoordinate2D *)coords count:(NSUInteger)count;
 
 /**
  Creates and returns an `MGLPolygon` object from the specified set of
@@ -50,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
     is considered to have no interior polygons.
  @return A new polygon object.
  */
-+ (instancetype)polygonWithCoordinates:(CLLocationCoordinate2D *)coords count:(NSUInteger)count interiorPolygons:(nullable NS_ARRAY_OF(MGLPolygon *) *)interiorPolygons;
++ (instancetype)polygonWithCoordinates:(const CLLocationCoordinate2D *)coords count:(NSUInteger)count interiorPolygons:(nullable NS_ARRAY_OF(MGLPolygon *) *)interiorPolygons;
 
 @end
 
@@ -64,6 +66,7 @@ NS_ASSUME_NONNULL_BEGIN
  @note `MGLMultiPolygon` objects cannot be added to a map view using
     `-[MGLMapView addAnnotations:]` and related methods.
  */
+MGL_EXPORT
 @interface MGLMultiPolygon : MGLShape <MGLOverlay>
 
 /**

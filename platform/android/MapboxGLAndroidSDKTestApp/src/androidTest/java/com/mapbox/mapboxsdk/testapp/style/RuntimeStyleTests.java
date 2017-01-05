@@ -9,10 +9,12 @@ import android.support.test.runner.AndroidJUnit4;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.style.layers.CannotAddLayerException;
 import com.mapbox.mapboxsdk.style.layers.FillLayer;
 import com.mapbox.mapboxsdk.style.layers.NoSuchLayerException;
 import com.mapbox.mapboxsdk.style.layers.Property;
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
+import com.mapbox.mapboxsdk.style.sources.CannotAddSourceException;
 import com.mapbox.mapboxsdk.style.sources.NoSuchSourceException;
 import com.mapbox.mapboxsdk.style.sources.Source;
 import com.mapbox.mapboxsdk.style.sources.VectorSource;
@@ -26,7 +28,6 @@ import junit.framework.Assert;
 import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,10 +36,8 @@ import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static junit.framework.Assert.fail;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Basic smoke tests for Layer and Source
@@ -46,140 +45,157 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public class RuntimeStyleTests {
 
-    @Rule
-    public final ActivityTestRule<RuntimeStyleTestActivity> rule = new ActivityTestRule<>(RuntimeStyleTestActivity.class);
+  @Rule
+  public final ActivityTestRule<RuntimeStyleTestActivity> rule = new ActivityTestRule<>(RuntimeStyleTestActivity.class);
 
-    private OnMapReadyIdlingResource idlingResource;
+  private OnMapReadyIdlingResource idlingResource;
 
-    @Before
-    public void registerIdlingResource() {
-        idlingResource = new OnMapReadyIdlingResource(rule.getActivity());
-        Espresso.registerIdlingResources(idlingResource);
+  @Before
+  public void registerIdlingResource() {
+    idlingResource = new OnMapReadyIdlingResource(rule.getActivity());
+    Espresso.registerIdlingResources(idlingResource);
+  }
+
+  @Test
+  public void testGetAddRemoveLayer() {
+    ViewUtils.checkViewIsDisplayed(R.id.mapView);
+    onView(withId(R.id.mapView)).perform(new AddRemoveLayerAction());
+  }
+
+  @Test
+  public void testAddRemoveSource() {
+    ViewUtils.checkViewIsDisplayed(R.id.mapView);
+
+    MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
+    mapboxMap.addSource(new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2"));
+    try {
+      mapboxMap.removeSource("my-source");
+    } catch (NoSuchSourceException noSuchSourceException) {
+      // it's ok..
     }
 
-    @Test
-    public void testGetAddRemoveLayer() {
-        ViewUtils.checkViewIsDisplayed(R.id.mapView);
-        onView(withId(R.id.mapView)).perform(new AddRemoveLayerAction());
+    onView(withId(R.id.mapView)).perform(new AddRemoveSourceAction());
+  }
+
+  private class AddRemoveLayerAction implements ViewAction {
+
+    @Override
+    public Matcher<View> getConstraints() {
+      return isDisplayed();
     }
 
-    @Test
-    public void testAddRemoveSource() {
-        ViewUtils.checkViewIsDisplayed(R.id.mapView);
-
-        MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
-        mapboxMap.addSource(new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2"));
-        try {
-            mapboxMap.removeSource("my-source");
-        } catch (NoSuchSourceException e) {
-            // it's ok..
-        }
-
-        onView(withId(R.id.mapView)).perform(new AddRemoveSourceAction());
+    @Override
+    public String getDescription() {
+      return getClass().getSimpleName();
     }
 
-    private class AddRemoveLayerAction implements ViewAction {
+    @Override
+    public void perform(UiController uiController, View view) {
+      MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
 
-        @Override
-        public Matcher<View> getConstraints() {
-            return isDisplayed();
-        }
+      //Get initial
+      assertNotNull(mapboxMap.getLayer("building"));
 
-        @Override
-        public String getDescription() {
-            return getClass().getSimpleName();
-        }
+      //Remove
+      try {
+        mapboxMap.removeLayer("building");
+      } catch (NoSuchLayerException noSuchSourceException) {
+        fail("Definitively exists: " + noSuchSourceException.getMessage());
+      }
+      assertNull(mapboxMap.getLayer("building"));
 
-        @Override
-        public void perform(UiController uiController, View view) {
-            MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
+      //Add
+      FillLayer layer = new FillLayer("building", "composite");
+      layer.setSourceLayer("building");
+      mapboxMap.addLayer(layer);
+      assertNotNull(mapboxMap.getLayer("building"));
 
-            //Get initial
-            assertNotNull(mapboxMap.getLayer("building"));
+      //Assure the reference still works
+      layer.setProperties(PropertyFactory.visibility(Property.VISIBLE));
 
-            //Remove
-            try {
-                mapboxMap.removeLayer("building");
-            } catch (NoSuchLayerException e) {
-                fail("Definitively exists: " + e.getMessage());
-            }
-            assertNull(mapboxMap.getLayer("building"));
+      //Remove, preserving the reference
+      try {
+        mapboxMap.removeLayer(layer);
+      } catch (NoSuchLayerException noSuchSourceException) {
+        fail("Definitively exists: " + noSuchSourceException.getMessage());
+      }
 
-            //Add
-            FillLayer layer = new FillLayer("building", "composite");
-            layer.setSourceLayer("building");
-            mapboxMap.addLayer(layer);
-            assertNotNull(mapboxMap.getLayer("building"));
+      //Property setters should still work
+      layer.setProperties(PropertyFactory.fillColor(Color.RED));
 
-            //Assure the reference still works
-            layer.setProperties(PropertyFactory.visibility(Property.VISIBLE));
+      //Re-add the reference...
+      mapboxMap.addLayer(layer);
 
-            //Remove, preserving the reference
-            try {
-                mapboxMap.removeLayer(layer);
-            } catch (NoSuchLayerException e) {
-                fail("Definitively exists: " + e.getMessage());
-            }
+      //Ensure it's there
+      Assert.assertNotNull(mapboxMap.getLayer(layer.getId()));
 
-            //Property setters should still work
-            layer.setProperties(PropertyFactory.fillColor(Color.RED));
+      //Test adding a duplicate layer
+      try {
+        mapboxMap.addLayer(new FillLayer("building", "composite"));
+        fail("Should not have been allowed to add a layer with a duplicate id");
+      } catch (CannotAddLayerException cannotAddLayerException) {
+        //OK
+      }
+    }
+  }
 
-            //Re-add the reference...
-            mapboxMap.addLayer(layer);
+  private class AddRemoveSourceAction implements ViewAction {
 
-            //Ensure it's there
-            Assert.assertNotNull(mapboxMap.getLayer(layer.getId()));
-        }
+    @Override
+    public Matcher<View> getConstraints() {
+      return isDisplayed();
     }
 
-    private class AddRemoveSourceAction implements ViewAction {
-
-        @Override
-        public Matcher<View> getConstraints() {
-            return isDisplayed();
-        }
-
-        @Override
-        public String getDescription() {
-            return getClass().getSimpleName();
-        }
-
-        @Override
-        public void perform(UiController uiController, View view) {
-            MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
-
-            //Add initial source
-            mapboxMap.addSource(new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2"));
-
-            //Remove
-            try {
-                mapboxMap.removeSource("my-source");
-            } catch (NoSuchSourceException e) {
-                fail("Definitively exists: " + e.getMessage());
-            }
-            assertNull(mapboxMap.getLayer("my-source"));
-
-            //Add
-            Source source = new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2");
-            mapboxMap.addSource(source);
-
-            //Remove, preserving the reference
-            try {
-                mapboxMap.removeSource(source);
-            } catch (NoSuchSourceException e) {
-                fail("Definitively exists: " + e.getMessage());
-            }
-
-            //Re-add the reference...
-            mapboxMap.addSource(source);
-
-            //Ensure it's there
-            Assert.assertNotNull(mapboxMap.getSource(source.getId()));
-        }
+    @Override
+    public String getDescription() {
+      return getClass().getSimpleName();
     }
 
-    @After
-    public void unregisterIntentServiceIdlingResource() {
-        Espresso.unregisterIdlingResources(idlingResource);
+    @Override
+    public void perform(UiController uiController, View view) {
+      MapboxMap mapboxMap = rule.getActivity().getMapboxMap();
+
+      //Add initial source
+      mapboxMap.addSource(new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2"));
+
+      //Remove
+      try {
+        mapboxMap.removeSource("my-source");
+      } catch (NoSuchSourceException noSuchSourceException) {
+        fail("Definitively exists: " + noSuchSourceException.getMessage());
+      }
+      assertNull(mapboxMap.getLayer("my-source"));
+
+      //Add
+      Source source = new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2");
+      mapboxMap.addSource(source);
+
+      //Remove, preserving the reference
+      try {
+        mapboxMap.removeSource(source);
+      } catch (NoSuchSourceException noSuchSourceException) {
+        fail("Definitively exists: " + noSuchSourceException.getMessage());
+      }
+
+      //Re-add the reference...
+      mapboxMap.addSource(source);
+
+      //Ensure it's there
+      Assert.assertNotNull(mapboxMap.getSource(source.getId()));
+
+      //Test adding a duplicate source
+      try {
+        Source source2 = new VectorSource("my-source", "mapbox://mapbox.mapbox-terrain-v2");
+        mapboxMap.addSource(source2);
+        fail("Should not have been allowed to add a source with a duplicate id");
+      } catch (CannotAddSourceException cannotAddSourceException) {
+        //OK
+      }
     }
+  }
+
+  @After
+  public void unregisterIntentServiceIdlingResource() {
+    Espresso.unregisterIdlingResources(idlingResource);
+  }
 }

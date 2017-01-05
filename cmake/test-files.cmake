@@ -73,10 +73,12 @@ set(MBGL_TEST_FILES
 
     # style/conversion
     test/style/conversion/geojson_options.test.cpp
+    test/style/conversion/stringify.test.cpp
 
     # style
     test/style/filter.test.cpp
     test/style/functions.test.cpp
+    test/style/group_by_layout.test.cpp
     test/style/source.test.cpp
     test/style/style.test.cpp
     test/style/style_layer.test.cpp
@@ -112,5 +114,6 @@ set(MBGL_TEST_FILES
     test/util/tile_cover.test.cpp
     test/util/timer.test.cpp
     test/util/token.test.cpp
+    test/util/url.test.cpp
     test/util/work_queue.test.cpp
 )

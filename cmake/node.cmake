@@ -3,8 +3,8 @@ add_nodejs_module(mbgl-node
 )
 
 target_sources(mbgl-node
-    PRIVATE platform/node/src/node_log.hpp
-    PRIVATE platform/node/src/node_log.cpp
+    PRIVATE platform/node/src/node_logging.hpp
+    PRIVATE platform/node/src/node_logging.cpp
     PRIVATE platform/node/src/node_map.hpp
     PRIVATE platform/node/src/node_map.cpp
     PRIVATE platform/node/src/node_request.hpp
@@ -29,6 +29,7 @@ target_compile_options(mbgl-node
 
 target_include_directories(mbgl-node
     PRIVATE src # TODO: eliminate
+    PRIVATE platform/default
 )
 
 target_link_libraries(mbgl-node

@@ -1,11 +1,21 @@
 #import "MGLSource.h"
 
-#include <mbgl/mbgl.hpp>
-#include <mbgl/style/source.hpp>
+NS_ASSUME_NONNULL_BEGIN
+
+namespace mbgl {
+    namespace style {
+        class Source;
+    }
+}
 
 @class MGLMapView;
 
 @interface MGLSource (Private)
+
+/**
+ Initializes and returns a source with a raw pointer to the backing store.
+ */
+- (instancetype)initWithRawSource:(mbgl::style::Source *)rawSource;
 
 /**
  A raw pointer to the mbgl object, which is always initialized, either to the 
@@ -28,4 +38,15 @@
  */
 - (void)addToMapView:(MGLMapView *)mapView;
 
+/**
+ Removes the mbgl source that this object represents from the mbgl map.
+ 
+ When a mbgl source is removed, ownership of the object is transferred back
+ to the `MGLSource` instance and the unique_ptr reference is valid again. It is
+ safe to add the source back to the style after it is removed.
+ */
+- (void)removeFromMapView:(MGLMapView *)mapView;
+
 @end
+
+NS_ASSUME_NONNULL_END

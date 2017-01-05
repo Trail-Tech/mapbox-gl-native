@@ -17,7 +17,7 @@ namespace mbgl {
 class SymbolBucket : public Bucket {
 public:
     SymbolBucket(const MapMode,
-                 style::SymbolLayoutProperties,
+                 style::SymbolLayoutProperties::Evaluated,
                  bool sdfIcons,
                  bool iconsNeedLinear);
 
@@ -29,14 +29,14 @@ public:
     bool hasCollisionBoxData() const;
 
     const MapMode mode;
-    const style::SymbolLayoutProperties layout;
+    const style::SymbolLayoutProperties::Evaluated layout;
     const bool sdfIcons;
     const bool iconsNeedLinear;
 
     struct TextBuffer {
         gl::VertexVector<SymbolVertex> vertices;
         gl::IndexVector<gl::Triangles> triangles;
-        std::vector<gl::Segment> segments;
+        gl::SegmentVector<SymbolAttributes> segments;
 
         optional<gl::VertexBuffer<SymbolVertex>> vertexBuffer;
         optional<gl::IndexBuffer<gl::Triangles>> indexBuffer;
@@ -45,15 +45,19 @@ public:
     struct IconBuffer {
         gl::VertexVector<SymbolVertex> vertices;
         gl::IndexVector<gl::Triangles> triangles;
-        std::vector<gl::Segment> segments;
+        gl::SegmentVector<SymbolAttributes> segments;
 
         optional<gl::VertexBuffer<SymbolVertex>> vertexBuffer;
         optional<gl::IndexBuffer<gl::Triangles>> indexBuffer;
     } icon;
 
     struct CollisionBoxBuffer {
-        gl::VertexVector<CollisionBoxVertex, gl::Lines> vertices;
-        optional<gl::VertexBuffer<CollisionBoxVertex, gl::Lines>> vertexBuffer;
+        gl::VertexVector<CollisionBoxVertex> vertices;
+        gl::IndexVector<gl::Lines> lines;
+        gl::SegmentVector<CollisionBoxAttributes> segments;
+
+        optional<gl::VertexBuffer<CollisionBoxVertex>> vertexBuffer;
+        optional<gl::IndexBuffer<gl::Lines>> indexBuffer;
     } collisionBox;
 };
 

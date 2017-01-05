@@ -5,7 +5,7 @@
 
 @interface MGLStyleLayer ()
 
-@property (nonatomic) mbgl::style::Layer *layer;
+@property (nonatomic) mbgl::style::Layer *rawLayer;
 
 @end
 
@@ -21,36 +21,55 @@
 
 - (void)setVisible:(BOOL)visible
 {
+    MGLAssertStyleLayerIsValid();
+
     mbgl::style::VisibilityType v = visible
     ? mbgl::style::VisibilityType::Visible
     : mbgl::style::VisibilityType::None;
-    self.layer->setVisibility(v);
+    self.rawLayer->setVisibility(v);
 }
 
 - (BOOL)isVisible
 {
-    mbgl::style::VisibilityType v = self.layer->getVisibility();
+    MGLAssertStyleLayerIsValid();
+
+    mbgl::style::VisibilityType v = self.rawLayer->getVisibility();
     return (v == mbgl::style::VisibilityType::Visible);
 }
 
 - (void)setMaximumZoomLevel:(float)maximumZoomLevel
 {
-    self.layer->setMaxZoom(maximumZoomLevel);
+    MGLAssertStyleLayerIsValid();
+
+    self.rawLayer->setMaxZoom(maximumZoomLevel);
 }
 
 - (float)maximumZoomLevel
 {
-    return self.layer->getMaxZoom();
+    MGLAssertStyleLayerIsValid();
+
+    return self.rawLayer->getMaxZoom();
 }
 
 - (void)setMinimumZoomLevel:(float)minimumZoomLevel
 {
-    self.layer->setMinZoom(minimumZoomLevel);
+    MGLAssertStyleLayerIsValid();
+
+    self.rawLayer->setMinZoom(minimumZoomLevel);
 }
 
 - (float)minimumZoomLevel
 {
-    return self.layer->getMinZoom();
+    MGLAssertStyleLayerIsValid();
+    
+    return self.rawLayer->getMinZoom();
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; identifier = %@; visible = %@>",
+            NSStringFromClass([self class]), (void *)self, self.identifier,
+            self.visible ? @"YES" : @"NO"];
 }
 
 @end

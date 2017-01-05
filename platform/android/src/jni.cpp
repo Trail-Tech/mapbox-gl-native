@@ -25,8 +25,8 @@
 #include <mbgl/style/layer.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/sprite/sprite_image.hpp>
-#include <mbgl/platform/event.hpp>
-#include <mbgl/platform/log.hpp>
+#include <mbgl/util/event.hpp>
+#include <mbgl/util/logging.hpp>
 #include <mbgl/storage/network_status.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/util/optional.hpp>
@@ -431,6 +431,12 @@ void nativeSetStyleUrl(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, j
     nativeMapView->getMap().setStyleURL(std_string_from_jstring(env, url));
 }
 
+jni::jstring* nativeGetStyleUrl(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr){
+    assert(nativeMapViewPtr != 0);
+    NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
+    return std_string_to_jstring(env, nativeMapView->getMap().getStyleURL());
+}
+
 void nativeSetStyleJson(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jni::jstring* newStyleJson) {
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
@@ -471,8 +477,7 @@ void nativeMoveBy(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jdoubl
                           jlong duration) {
     assert(nativeMapViewPtr != 0);
     NativeMapView *nativeMapView = reinterpret_cast<NativeMapView *>(nativeMapViewPtr);
-    mbgl::ScreenCoordinate center(dx, dy);
-    nativeMapView->getMap().moveBy(center, mbgl::Milliseconds(duration));
+    nativeMapView->getMap().moveBy({dx, dy}, mbgl::Milliseconds(duration));
 }
 
 void nativeSetLatLng(JNIEnv *env, jni::jobject* obj, jlong nativeMapViewPtr, jdouble latitude, jdouble longitude, jlong duration) {
@@ -1704,9 +1709,12 @@ void updateOfflineRegionMetadata(JNIEnv *env, jni::jobject* offlineRegion_, jni:
 
 // Offline calls end
 
-}
+} // anonymous
 
-extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+namespace mbgl {
+namespace android {
+
+void registerNatives(JavaVM *vm) {
     theJVM = vm;
 
     jni::JNIEnv& env = jni::GetEnv(*vm, jni::jni_version_1_6);
@@ -1814,6 +1822,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         MAKE_NATIVE_METHOD(nativeSetClasses, "(JLjava/util/List;)V"),
         MAKE_NATIVE_METHOD(nativeGetClasses, "(J)Ljava/util/List;"),
         MAKE_NATIVE_METHOD(nativeSetStyleUrl, "(JLjava/lang/String;)V"),
+        MAKE_NATIVE_METHOD(nativeGetStyleUrl, "(J)Ljava/lang/String;"),
         MAKE_NATIVE_METHOD(nativeSetStyleJson, "(JLjava/lang/String;)V"),
         MAKE_NATIVE_METHOD(nativeGetStyleJson, "(J)Ljava/lang/String;"),
         MAKE_NATIVE_METHOD(nativeSetAccessToken, "(JLjava/lang/String;)V"),
@@ -1989,6 +1998,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     char release[PROP_VALUE_MAX] = "";
     __system_property_get("ro.build.version.release", release);
     androidRelease = std::string(release);
-
-    return JNI_VERSION_1_6;
 }
+    
+} // android
+} // mbgl

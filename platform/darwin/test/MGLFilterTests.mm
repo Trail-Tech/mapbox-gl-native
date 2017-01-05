@@ -5,7 +5,7 @@
 
 
 @interface MGLFilterTests : MGLStyleLayerTests {
-    MGLGeoJSONSource *source;
+    MGLShapeSource *source;
     MGLLineStyleLayer *layer;
 }
 @end
@@ -18,7 +18,11 @@
     NSString *filePath = [[NSBundle bundleForClass:self.class] pathForResource:@"amsterdam" ofType:@"geojson"];
     NSURL *url = [NSURL fileURLWithPath:filePath];
     NSData *geoJSONData = [NSData dataWithContentsOfURL:url];
-    source = [[MGLGeoJSONSource alloc] initWithIdentifier:@"test-source" geoJSONData:geoJSONData options:nil];
+    NSError *error;
+    MGLShape *shape = [MGLShape shapeWithData:geoJSONData encoding:NSUTF8StringEncoding error:&error];
+    XCTAssertNil(error);
+    XCTAssertNotNil(shape);
+    source = [[MGLShapeSource alloc] initWithIdentifier:@"test-source" shape:shape options:nil];
     [self.mapView.style addSource:source];
     layer = [[MGLLineStyleLayer alloc] initWithIdentifier:@"test-layer" source:source];
 }
@@ -71,6 +75,18 @@
         layer.predicate = predicate;
         XCTAssertEqualObjects(layer.predicate, predicate);
     }
+    [self.mapView.style addLayer:layer];
+}
+
+- (void)testContainsPredicate
+{
+    // core does not have a "contains" filter but we can achieve the equivalent by creating an `mbgl::style::InFilter`
+    // and searching the value for the key
+    NSPredicate *expectedPredicate = [NSPredicate predicateWithFormat:@"park IN %@", @[@"park", @"neighbourhood"]];
+    NSPredicate *containsPredicate = [NSPredicate predicateWithFormat:@"%@ CONTAINS %@", @[@"park", @"neighbourhood"], @"park"];
+    
+    layer.predicate = containsPredicate;
+    XCTAssertEqualObjects(layer.predicate, expectedPredicate);
     [self.mapView.style addLayer:layer];
 }
 

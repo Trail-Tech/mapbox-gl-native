@@ -1,4 +1,4 @@
-// This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make style-code-android`.
+// This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make android-style-code`.
 
 #pragma once
 
@@ -38,6 +38,12 @@ public:
     jni::Object<jni::ObjectTag> getCircleTranslateAnchor(jni::JNIEnv&);
 
     jni::Object<jni::ObjectTag> getCirclePitchScale(jni::JNIEnv&);
+
+    jni::Object<jni::ObjectTag> getCircleStrokeWidth(jni::JNIEnv&);
+
+    jni::Object<jni::ObjectTag> getCircleStrokeColor(jni::JNIEnv&);
+
+    jni::Object<jni::ObjectTag> getCircleStrokeOpacity(jni::JNIEnv&);
 
     jni::jobject* createJavaPeer(jni::JNIEnv&);
 

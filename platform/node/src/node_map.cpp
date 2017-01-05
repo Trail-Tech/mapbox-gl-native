@@ -4,7 +4,7 @@
 #include "node_conversion.hpp"
 #include "node_geojson.hpp"
 
-#include <mbgl/platform/default/headless_display.hpp>
+#include <mbgl/gl/headless_display.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/style/conversion/source.hpp>
 #include <mbgl/style/conversion/layer.hpp>
@@ -21,15 +21,15 @@
 namespace node_mbgl {
 
 struct NodeMap::RenderOptions {
-    mbgl::optional<double> zoom;
-    mbgl::optional<double> bearing;
-    mbgl::optional<double> pitch;
-    mbgl::optional<double> latitude;
-    mbgl::optional<double> longitude;
+    double zoom = 0;
+    double bearing = 0;
+    double pitch = 0;
+    double latitude = 0;
+    double longitude = 0;
     unsigned int width = 512;
     unsigned int height = 512;
-    mbgl::optional<std::vector<std::string>> classes;
-    mbgl::optional<mbgl::MapDebugOptions> debugOptions;
+    std::vector<std::string> classes;
+    mbgl::MapDebugOptions debugOptions = mbgl::MapDebugOptions::NoDebug;
 };
 
 Nan::Persistent<v8::Function> NodeMap::constructor;
@@ -62,7 +62,9 @@ void NodeMap::Init(v8::Local<v8::Object> target) {
     Nan::SetPrototypeMethod(tpl, "setPaintProperty", SetPaintProperty);
     Nan::SetPrototypeMethod(tpl, "setFilter", SetFilter);
     Nan::SetPrototypeMethod(tpl, "setCenter", SetCenter);
+    Nan::SetPrototypeMethod(tpl, "setZoom", SetZoom);
     Nan::SetPrototypeMethod(tpl, "setBearing", SetBearing);
+    Nan::SetPrototypeMethod(tpl, "setPitch", SetPitch);
 
     Nan::SetPrototypeMethod(tpl, "dumpDebugLogs", DumpDebugLogs);
     Nan::SetPrototypeMethod(tpl, "queryRenderedFeatures", QueryRenderedFeatures);
@@ -266,40 +268,37 @@ NodeMap::RenderOptions NodeMap::ParseOptions(v8::Local<v8::Object> obj) {
     if (Nan::Has(obj, Nan::New("classes").ToLocalChecked()).FromJust()) {
         auto classes = Nan::To<v8::Object>(Nan::Get(obj, Nan::New("classes").ToLocalChecked()).ToLocalChecked()).ToLocalChecked().As<v8::Array>();
         const int length = classes->Length();
-        std::vector<std::string> vector;
-        vector.reserve(length);
+        options.classes.reserve(length);
         for (int i = 0; i < length; i++) {
-            vector.push_back(std::string { *Nan::Utf8String(Nan::To<v8::String>(Nan::Get(classes, i).ToLocalChecked()).ToLocalChecked()) });
+            options.classes.push_back(std::string { *Nan::Utf8String(Nan::To<v8::String>(Nan::Get(classes, i).ToLocalChecked()).ToLocalChecked()) });
         }
-        options.classes = std::move(vector);
     }
 
     if (Nan::Has(obj, Nan::New("debug").ToLocalChecked()).FromJust()) {
         auto debug = Nan::To<v8::Object>(Nan::Get(obj, Nan::New("debug").ToLocalChecked()).ToLocalChecked()).ToLocalChecked();
-        options.debugOptions = mbgl::MapDebugOptions::NoDebug;
         if (Nan::Has(debug, Nan::New("tileBorders").ToLocalChecked()).FromJust()) {
             if (Nan::Get(debug, Nan::New("tileBorders").ToLocalChecked()).ToLocalChecked()->BooleanValue()) {
-                *options.debugOptions = *options.debugOptions | mbgl::MapDebugOptions::TileBorders;
+                options.debugOptions = options.debugOptions | mbgl::MapDebugOptions::TileBorders;
             }
         }
         if (Nan::Has(debug, Nan::New("parseStatus").ToLocalChecked()).FromJust()) {
             if (Nan::Get(debug, Nan::New("parseStatus").ToLocalChecked()).ToLocalChecked()->BooleanValue()) {
-                *options.debugOptions = *options.debugOptions | mbgl::MapDebugOptions::ParseStatus;
+                options.debugOptions = options.debugOptions | mbgl::MapDebugOptions::ParseStatus;
             }
         }
         if (Nan::Has(debug, Nan::New("timestamps").ToLocalChecked()).FromJust()) {
             if (Nan::Get(debug, Nan::New("timestamps").ToLocalChecked()).ToLocalChecked()->BooleanValue()) {
-                *options.debugOptions = *options.debugOptions | mbgl::MapDebugOptions::Timestamps;
+                options.debugOptions = options.debugOptions | mbgl::MapDebugOptions::Timestamps;
             }
         }
         if (Nan::Has(debug, Nan::New("collision").ToLocalChecked()).FromJust()) {
             if (Nan::Get(debug, Nan::New("collision").ToLocalChecked()).ToLocalChecked()->BooleanValue()) {
-                *options.debugOptions = *options.debugOptions | mbgl::MapDebugOptions::Collision;
+                options.debugOptions = options.debugOptions | mbgl::MapDebugOptions::Collision;
             }
         }
         if (Nan::Has(debug, Nan::New("overdraw").ToLocalChecked()).FromJust()) {
             if (Nan::Get(debug, Nan::New("overdraw").ToLocalChecked()).ToLocalChecked()->BooleanValue()) {
-                *options.debugOptions = mbgl::MapDebugOptions::Overdraw;
+                options.debugOptions = mbgl::MapDebugOptions::Overdraw;
             }
         }
     }
@@ -368,28 +367,29 @@ void NodeMap::startRender(NodeMap::RenderOptions options) {
         view = std::make_unique<mbgl::OffscreenView>(backend.getContext(), fbSize);
     }
 
-    if (options.classes) {
-        map->setClasses(*options.classes);
+    if (map->getClasses() != options.classes) {
+        map->setClasses(options.classes);
     }
 
-    if (options.latitude && options.longitude) {
-        map->setLatLng(mbgl::LatLng(*options.latitude, *options.longitude));
+    if (map->getZoom() != options.zoom) {
+        map->setZoom(options.zoom);
     }
 
-    if (options.zoom) {
-        map->setZoom(*options.zoom);
+    mbgl::LatLng latLng(options.latitude, options.longitude);
+    if (map->getLatLng() != latLng) {
+        map->setLatLng(latLng);
     }
 
-    if (options.bearing) {
-        map->setBearing(*options.bearing);
+    if (map->getBearing() != options.bearing) {
+        map->setBearing(options.bearing);
     }
 
-    if (options.pitch) {
-        map->setPitch(*options.pitch);
+    if (map->getPitch() != options.pitch) {
+        map->setPitch(options.pitch);
     }
 
-    if (options.debugOptions) {
-        map->setDebug(*options.debugOptions);
+    if (map->getDebug() != options.debugOptions) {
+        map->setDebug(options.debugOptions);
     }
 
     map->renderStill(*view, [this](const std::exception_ptr eptr) {
@@ -727,6 +727,23 @@ void NodeMap::SetCenter(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     info.GetReturnValue().SetUndefined();
 }
 
+void NodeMap::SetZoom(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+    auto nodeMap = Nan::ObjectWrap::Unwrap<NodeMap>(info.Holder());
+    if (!nodeMap->map) return Nan::ThrowError(releasedMessage());
+
+    if (info.Length() <= 0 || !info[0]->IsNumber()) {
+        return Nan::ThrowTypeError("First argument must be a number");
+    }
+
+    try {
+        nodeMap->map->setZoom(info[0]->NumberValue());
+    } catch (const std::exception &ex) {
+        return Nan::ThrowError(ex.what());
+    }
+
+    info.GetReturnValue().SetUndefined();
+}
+
 void NodeMap::SetBearing(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     auto nodeMap = Nan::ObjectWrap::Unwrap<NodeMap>(info.Holder());
     if (!nodeMap->map) return Nan::ThrowError(releasedMessage());
@@ -737,6 +754,23 @@ void NodeMap::SetBearing(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 
     try {
         nodeMap->map->setBearing(info[0]->NumberValue());
+    } catch (const std::exception &ex) {
+        return Nan::ThrowError(ex.what());
+    }
+
+    info.GetReturnValue().SetUndefined();
+}
+
+void NodeMap::SetPitch(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+    auto nodeMap = Nan::ObjectWrap::Unwrap<NodeMap>(info.Holder());
+    if (!nodeMap->map) return Nan::ThrowError(releasedMessage());
+
+    if (info.Length() <= 0 || !info[0]->IsNumber()) {
+        return Nan::ThrowTypeError("First argument must be a number");
+    }
+
+    try {
+        nodeMap->map->setPitch(info[0]->NumberValue());
     } catch (const std::exception &ex) {
         return Nan::ThrowError(ex.what());
     }

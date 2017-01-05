@@ -4,7 +4,30 @@ Mapbox welcomes participation and contributions from everyone.  If you'd like to
 
 ## 5.0.0 - TBA
 
+* Consistent double tap zoom acceleration [#7514](https://github.com/mapbox/mapbox-gl-native/issues/7514)
 * Support for Android Nougat [#5910](5910-move-listener-logic-for-nougat) & [#6390](https://github.com/mapbox/mapbox-gl-native/pull/6390)
+
+## 4.2.1 - December 22, 2016
+
+Mapbox Android 4.2.1 is a bugfix release build on top of 4.2.0 and resolves:
+
+* Gesture handling bugs
+  - Reverse fling when tilted [#7383](https://github.com/mapbox/mapbox-gl-native/pull/7383)
+  - Rotation is hard trigger [#7299](https://github.com/mapbox/mapbox-gl-native/pull/7299)
+* Null pointer exception on TrackingSettings [#7505](https://github.com/mapbox/mapbox-gl-native/pull/7505)
+* Patches to our CI integration [#7363](https://github.com/mapbox/mapbox-gl-native/pull/7363) & [#7385](https://github.com/mapbox/mapbox-gl-native/pull/7385)
+* Screen density is now correctly applied for attributes [#7327](https://github.com/mapbox/mapbox-gl-native/pull/7327)
+* Usage of LocalBroadCastReceiver [#7511](https://github.com/mapbox/mapbox-gl-native/pull/7511)
+
+## 4.2.0 - December 14, 2016
+
+Mapbox Android 4.2.0 contains all 4.2.0-beta.3 changes and adds:
+
+* Adds additional documentation to APIs
+* Resolved issue with marker views occasionally not showing up until a gesture was performed on map [#7239](https://github.com/mapbox/mapbox-gl-native/pull/7239)
+* Added horizontal accuracy to location events [#7237](https://github.com/mapbox/mapbox-gl-native/pull/7237)
+* Resolved issue with changing visibility of a layer [#7242](https://github.com/mapbox/mapbox-gl-native/pull/7242)
+* Proguard improvement and fixes
 
 ## 4.2.0-beta.3 - September 21, 2016
 

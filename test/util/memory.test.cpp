@@ -2,9 +2,9 @@
 #include <mbgl/test/util.hpp>
 
 #include <mbgl/map/map.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/util/io.hpp>
 #include <mbgl/util/run_loop.hpp>
 
@@ -56,7 +56,7 @@ public:
     }
 
     util::RunLoop runLoop;
-    HeadlessBackend backend;
+    HeadlessBackend backend { test::sharedDisplay() };
     OffscreenView view{ backend.getContext(), { 512, 512 } };
     StubFileSource fileSource;
     ThreadPool threadPool { 4 };

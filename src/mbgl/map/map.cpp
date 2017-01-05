@@ -23,7 +23,7 @@
 #include <mbgl/util/mapbox.hpp>
 #include <mbgl/util/tile_coordinate.hpp>
 #include <mbgl/actor/scheduler.hpp>
-#include <mbgl/platform/log.hpp>
+#include <mbgl/util/logging.hpp>
 #include <mbgl/math/log2.hpp>
 
 namespace mbgl {
@@ -147,7 +147,7 @@ Map::Impl::Impl(Map& map_,
 }
 
 Map::~Map() {
-    impl->backend.activate();
+    BackendScope guard(impl->backend);
 
     impl->styleRequest = nullptr;
 
@@ -156,8 +156,6 @@ Map::~Map() {
     impl->style.reset();
     impl->annotationManager.reset();
     impl->painter.reset();
-
-    impl->backend.deactivate();
 }
 
 void Map::renderStill(View& view, StillImageCallback callback) {
@@ -255,16 +253,16 @@ void Map::Impl::update() {
         annotationManager->updateData();
     }
 
-    if (updateFlags & Update::Layout) {
-        style->relayout();
-    }
-
     if (updateFlags & Update::Classes) {
         style->cascade(timePoint, mode);
     }
 
     if (updateFlags & Update::Classes || updateFlags & Update::RecalculateStyle) {
         style->recalculate(transform.getZoom(), timePoint, mode);
+    }
+
+    if (updateFlags & Update::Layout) {
+        style->relayout();
     }
 
     style::UpdateParameters parameters(pixelRatio,
@@ -282,9 +280,8 @@ void Map::Impl::update() {
         backend.invalidate();
     } else if (stillImageRequest && style->isLoaded()) {
         // TODO: determine whether we need activate/deactivate
-        backend.activate();
+        BackendScope guard(backend);
         render(stillImageRequest->view);
-        backend.deactivate();
     }
 
     updateFlags = Update::Nothing;
@@ -292,7 +289,7 @@ void Map::Impl::update() {
 
 void Map::Impl::render(View& view) {
     if (!painter) {
-        painter = std::make_unique<Painter>(backend.getContext(), transform.getState());
+        painter = std::make_unique<Painter>(backend.getContext(), transform.getState(), pixelRatio);
     }
 
     FrameData frameData { timePoint,
@@ -825,7 +822,8 @@ AnnotationIDs Map::queryPointAnnotations(const ScreenBox& box) {
     std::set<AnnotationID> set;
     for (auto &feature : features) {
         assert(feature.id);
-        assert(*feature.id <= std::numeric_limits<AnnotationID>::max());
+        assert(feature.id->is<uint64_t>());
+        assert(feature.id->get<uint64_t>() <= std::numeric_limits<AnnotationID>::max());
         set.insert(static_cast<AnnotationID>(feature.id->get<uint64_t>()));
     }
     AnnotationIDs ids;
@@ -835,6 +833,10 @@ AnnotationIDs Map::queryPointAnnotations(const ScreenBox& box) {
 }
 
 #pragma mark - Style API
+
+std::vector<style::Source*> Map::getSources() {
+    return impl->style ? impl->style->getSources() : std::vector<style::Source*>();
+}
 
 style::Source* Map::getSource(const std::string& sourceID) {
     if (impl->style) {
@@ -859,7 +861,11 @@ std::unique_ptr<Source> Map::removeSource(const std::string& sourceID) {
     return nullptr;
 }
 
-style::Layer* Map::getLayer(const std::string& layerID) {
+std::vector<style::Layer*> Map::getLayers() {
+    return impl->style ? impl->style->getLayers() : std::vector<style::Layer*>();
+}
+
+Layer* Map::getLayer(const std::string& layerID) {
     if (impl->style) {
         impl->styleMutated = true;
         return impl->style->getLayer(layerID);
@@ -873,12 +879,10 @@ void Map::addLayer(std::unique_ptr<Layer> layer, const optional<std::string>& be
     }
 
     impl->styleMutated = true;
-    impl->backend.activate();
+    BackendScope guard(impl->backend);
 
     impl->style->addLayer(std::move(layer), before);
     impl->onUpdate(Update::Classes);
-
-    impl->backend.deactivate();
 }
 
 std::unique_ptr<Layer> Map::removeLayer(const std::string& id) {
@@ -887,12 +891,10 @@ std::unique_ptr<Layer> Map::removeLayer(const std::string& id) {
     }
 
     impl->styleMutated = true;
-    impl->backend.activate();
+    BackendScope guard(impl->backend);
 
     auto removedLayer = impl->style->removeLayer(id);
     impl->onUpdate(Update::Classes);
-
-    impl->backend.deactivate();
 
     return removedLayer;
 }
@@ -919,6 +921,13 @@ void Map::removeImage(const std::string& name) {
     impl->style->spriteAtlas->updateDirty();
 
     impl->onUpdate(Update::Repaint);
+}
+
+const SpriteImage* Map::getImage(const std::string& name) {
+    if (impl->style) {
+        return impl->style->spriteAtlas->getSprite(name).get();
+    }
+    return nullptr;
 }
 
 #pragma mark - Defaults
@@ -1051,9 +1060,8 @@ void Map::setSourceTileCacheSize(size_t size) {
 
 void Map::onLowMemory() {
     if (impl->painter) {
-        impl->backend.activate();
+        BackendScope guard(impl->backend);
         impl->painter->cleanup();
-        impl->backend.deactivate();
     }
     if (impl->style) {
         impl->style->onLowMemory();

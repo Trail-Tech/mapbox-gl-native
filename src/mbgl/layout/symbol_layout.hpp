@@ -4,6 +4,7 @@
 #include <mbgl/style/layers/symbol_layer_properties.hpp>
 #include <mbgl/layout/symbol_feature.hpp>
 #include <mbgl/layout/symbol_instance.hpp>
+#include <mbgl/text/bidi.hpp>
 
 #include <memory>
 #include <map>
@@ -20,20 +21,21 @@ class SymbolBucket;
 
 namespace style {
 class Filter;
+class Layer;
 } // namespace style
 
 struct Anchor;
 
 class SymbolLayout {
 public:
-    SymbolLayout(std::string bucketName_,
+    SymbolLayout(std::vector<std::unique_ptr<style::Layer>>,
                  std::string sourceLayerName_,
                  uint32_t overscaling,
                  float zoom,
                  const MapMode,
                  const GeometryTileLayer&,
                  const style::Filter&,
-                 style::SymbolLayoutProperties,
+                 style::SymbolLayoutProperties::Evaluated,
                  float textMaxSize,
                  SpriteAtlas&);
 
@@ -54,18 +56,17 @@ public:
 
     State state = Pending;
 
-    const std::string bucketName;
+    const std::vector<std::unique_ptr<style::Layer>> layers;
     const std::string sourceLayerName;
 
 private:
-    void addFeature(const GeometryCollection&,
+    void addFeature(const SymbolFeature&,
                     const Shaping& shapedText,
                     const PositionedIcon& shapedIcon,
-                    const GlyphPositions& face,
-                    const size_t index);
+                    const GlyphPositions& face);
 
-    bool anchorIsTooClose(const std::u32string& text, const float repeatDistance, Anchor&);
-    std::map<std::u32string, std::vector<Anchor>> compareText;
+    bool anchorIsTooClose(const std::u16string& text, const float repeatDistance, const Anchor&);
+    std::map<std::u16string, std::vector<Anchor>> compareText;
 
     void addToDebugBuffers(CollisionTile&, SymbolBucket&);
 
@@ -77,7 +78,7 @@ private:
     const float overscaling;
     const float zoom;
     const MapMode mode;
-    const style::SymbolLayoutProperties layout;
+    const style::SymbolLayoutProperties::Evaluated layout;
     const float textMaxSize;
 
     SpriteAtlas& spriteAtlas;
@@ -91,6 +92,8 @@ private:
     GlyphRangeSet ranges;
     std::vector<SymbolInstance> symbolInstances;
     std::vector<SymbolFeature> features;
+    
+    BiDi bidi; // Consider moving this up to geometry tile worker to reduce reinstantiation costs; use of BiDi/ubiditransform object must be constrained to one thread
 };
 
 } // namespace mbgl

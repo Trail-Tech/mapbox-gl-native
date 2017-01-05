@@ -4,15 +4,57 @@ const fs = require('fs');
 const ejs = require('ejs');
 const _ = require('lodash');
 const colorParser = require('csscolorparser');
-const spec = _.merge(require('mapbox-gl-style-spec').latest, require('./style-spec-overrides-v8.json'));
 
 require('../../../scripts/style-code');
 
+const cocoaConventions = require('./style-spec-cocoa-conventions-v8.json');
+let spec = _.merge(require('mapbox-gl-style-spec').latest, require('./style-spec-overrides-v8.json'));
 const prefix = 'MGL';
 const suffix = 'StyleLayer';
 
+// Rename properties and keep `original` for use with setters and getters
+_.forOwn(cocoaConventions, function (properties, kind) {
+    _.forOwn(properties, function (newName, oldName) {
+        let property = spec[kind][oldName];
+        if (newName.startsWith('is-')) {
+            property.getter = newName;
+            newName = newName.substr(3);
+        }
+        if (newName !== oldName) {
+            property.original = oldName;
+        }
+        delete spec[kind][oldName];
+        spec[kind][newName] = property;
+        
+        // Update requirements in other properties.
+        let updateRequirements = function (property, name) {
+            let requires = property.requires || [];
+            for (let i = 0; i < requires.length; i++) {
+                if (requires[i] === oldName) {
+                    property.requires[i] = newName;
+                }
+                if (typeof requires[i] !== 'string') {
+                    let prop = name;
+                    _.forOwn(requires[i], function (values, name, require) {
+                        if (name === oldName) {
+                            require[newName] = values;
+                            delete require[name];
+                        }
+                    });
+                }
+            }
+        };
+        _.forOwn(spec[kind.replace(/^layout_/, 'paint_')], updateRequirements);
+        _.forOwn(spec[kind.replace(/^paint_/, 'layout_')], updateRequirements);
+    })
+});
+
 global.objCName = function (property) {
     return camelizeWithLeadingLowercase(property.name);
+}
+
+global.objCGetter = function (property) {
+    return camelizeWithLeadingLowercase(property.getter || property.name);
 }
 
 global.objCType = function (layerType, propertyName) {
@@ -20,7 +62,7 @@ global.objCType = function (layerType, propertyName) {
 }
 
 global.arrayType = function (property) {
-    return property.type === 'array' ? property.name.split('-').pop() : false;
+    return property.type === 'array' ? originalPropertyName(property).split('-').pop() : false;
 };
 
 global.testImplementation = function (property, layerType, isFunction) {
@@ -113,7 +155,7 @@ global.propertyDoc = function (propertyName, property, layerType) {
     return doc.replace(/(p)ixel/gi, '$1oint').replace(/(\d)px\b/g, '$1pt');
 };
 
-global.propertyReqs = function (property, layoutPropertiesByName, type) {
+global.propertyReqs = function (property, propertiesByName, type) {
     return 'This property is only applied to the style if ' + property.requires.map(function (req) {
         if (typeof req === 'string') {
             return '`' + camelizeWithLeadingLowercase(req) + '` is non-`nil`';
@@ -121,7 +163,7 @@ global.propertyReqs = function (property, layoutPropertiesByName, type) {
             return '`' + camelizeWithLeadingLowercase(req['!']) + '` is set to `nil`';
         } else {
             let name = Object.keys(req)[0];
-            return '`' + camelizeWithLeadingLowercase(name) + '` is set to an `MGLStyleValue` object containing ' + describeValue(req[name], layoutPropertiesByName[name], type);
+            return '`' + camelizeWithLeadingLowercase(name) + '` is set to an `MGLStyleValue` object containing ' + describeValue(req[name], propertiesByName[name], type);
         }
     }).join(', and ') + '. Otherwise, it is ignored.';
 };
@@ -202,6 +244,10 @@ global.propertyDefault = function (property, layerType) {
     return 'an `MGLStyleValue` object containing ' + describeValue(property.default, property, layerType);
 };
 
+global.originalPropertyName = function (property) {
+    return property.original || property.name;
+}
+
 global.propertyType = function (property) {
     switch (property.type) {
         case 'boolean':
@@ -278,11 +324,11 @@ global.setSourceLayer = function() {
 }
 
 global.mbglType = function(property) {
-    let mbglType = camelize(property.name) + 'Type';
-    if (/-translate-anchor$/.test(property.name)) {
+    let mbglType = camelize(originalPropertyName(property)) + 'Type';
+    if (/-translate-anchor$/.test(originalPropertyName(property))) {
         mbglType = 'TranslateAnchorType';
     }
-    if (/-(rotation|pitch)-alignment$/.test(property.name)) {
+    if (/-(rotation|pitch)-alignment$/.test(originalPropertyName(property))) {
         mbglType = 'AlignmentType';
     }
     return mbglType;
@@ -290,7 +336,9 @@ global.mbglType = function(property) {
 
 const layerH = ejs.compile(fs.readFileSync('platform/darwin/src/MGLStyleLayer.h.ejs', 'utf8'), { strict: true });
 const layerM = ejs.compile(fs.readFileSync('platform/darwin/src/MGLStyleLayer.mm.ejs', 'utf8'), { strict: true});
-const testLayers = ejs.compile(fs.readFileSync('platform/darwin/src/MGLRuntimeStylingTests.m.ejs', 'utf8'), { strict: true});
+const testLayers = ejs.compile(fs.readFileSync('platform/darwin/test/MGLStyleLayerTests.m.ejs', 'utf8'), { strict: true});
+const categoryH = ejs.compile(fs.readFileSync('platform/darwin/src/NSValue+MGLStyleEnumAttributeAdditions.h.ejs', 'utf8'), { strict: true});
+const categoryM = ejs.compile(fs.readFileSync('platform/darwin/src/NSValue+MGLStyleEnumAttributeAdditions.mm.ejs', 'utf8'), { strict: true});
 
 const layers = Object.keys(spec.layer.type.values).map((type) => {
     const layoutProperties = Object.keys(spec[`layout_${type}`]).reduce((memo, name) => {
@@ -309,8 +357,8 @@ const layers = Object.keys(spec.layer.type.values).map((type) => {
 
     return {
         type: type,
-        layoutProperties: layoutProperties,
-        paintProperties: paintProperties,
+        layoutProperties: _.sortBy(layoutProperties, ['name']),
+        paintProperties: _.sortBy(paintProperties, ['name']),
         layoutPropertiesByName: spec[`layout_${type}`],
         paintPropertiesByName: spec[`paint_${type}`],
     };
@@ -335,8 +383,28 @@ ${macosComment}${decl}
     });
 }
 
+var allLayoutProperties = [];
+var allPaintProperties = [];
+var allTypes = [];
+
 for (var layer of layers) {
+    allLayoutProperties.push(layer.layoutProperties);
+    allPaintProperties.push(layer.paintProperties);
+    allTypes.push(layer.type);
+    const containsEnumerationProperties =  _.filter(layer.layoutProperties, function(property){ return property["type"] === "enum"; }).length  || _.filter(layer.paintProperties, function(property){ return property["type"] === "enum"; }).length;
+    layer.containsEnumerationProperties = containsEnumerationProperties;
+    
     writeIfModified(`platform/darwin/src/${prefix}${camelize(layer.type)}${suffix}.h`, duplicatePlatformDecls(layerH(layer)));
     writeIfModified(`platform/darwin/src/${prefix}${camelize(layer.type)}${suffix}.mm`, layerM(layer));
     writeIfModified(`platform/darwin/test/${prefix}${camelize(layer.type)}${suffix}Tests.m`, testLayers(layer));
 }
+
+fs.writeFileSync(`platform/darwin/src/NSValue+MGLStyleEnumAttributeAdditions.h`, categoryH({
+    layoutProperties: _.flatten(allLayoutProperties),
+    paintProperties: _.flatten(allPaintProperties),
+    types: allTypes
+}));
+fs.writeFileSync(`platform/darwin/src/NSValue+MGLStyleEnumAttributeAdditions.mm`, categoryM({
+    layoutProperties: _.flatten(allLayoutProperties),
+    paintProperties: _.flatten(allPaintProperties)
+}));

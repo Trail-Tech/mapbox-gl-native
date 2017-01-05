@@ -91,7 +91,7 @@
     mbgl::Point<double> point = { -90.066667, 29.95 };
     mbgl::Feature pointFeature { point };
     pointFeature.id = { UINT64_MAX };
-    pointFeature.properties["null"] = nullptr;
+    pointFeature.properties["null"] = mapbox::geometry::null_value;
     pointFeature.properties["bool"] = true;
     pointFeature.properties["unsigned int"] = UINT64_MAX;
     pointFeature.properties["int"] = INT64_MIN;
@@ -159,7 +159,7 @@
 }
 
 - (void)testPointFeatureGeoJSONDictionary {
-    MGLPointFeature<MGLFeaturePrivate> *pointFeature = (MGLPointFeature<MGLFeaturePrivate> *)[[MGLPointFeature alloc] init];
+    MGLPointFeature *pointFeature = [[MGLPointFeature alloc] init];
     CLLocationCoordinate2D coordinate = { 10, 10 };
     pointFeature.coordinate = coordinate;
     

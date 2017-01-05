@@ -8,6 +8,7 @@
 // This file is generated. 
 // Edit platform/darwin/scripts/generate-style-code.js, then run `make style-code-darwin`.
 
+#import "MGLFoundation.h"
 #import "MGLStyleValue.h"
 #import "MGL<%-
 (type === 'background' ? '' :
@@ -68,6 +69,7 @@ typedef NS_ENUM(NSUInteger, MGL<%- camelize(property.name) %>) {
  `-[MGLStyle layerWithIdentifier:]` method. 
  */
 <% } -%>
+MGL_EXPORT
 @interface MGL<%- camelize(type) %>StyleLayer : MGL<%-
 (type === 'background' ? '' :
  (type === 'raster' ? 'Foreground' :
@@ -91,9 +93,17 @@ typedef NS_ENUM(NSUInteger, MGL<%- camelize(property.name) %>) {
  
  <%- propertyReqs(property, layoutPropertiesByName, type) %>
 <% } -%>
+<% if (property.original) { -%>
+ 
+ This attribute corresponds to the <a href="https://www.mapbox.com/mapbox-gl-style-spec/#layout-<%- type -%>-<%- property.original -%>"><code><%- property.original -%></code></a> layout property in the Mapbox Style Specification.
+<% } -%>
  */
-@property (nonatomic<% if (!property.required) { %>, null_resettable<% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(property.name) %>;
+@property (nonatomic<% if (!property.required) { %>, null_resettable<% } if (property.getter) { %>, getter=<%- objCGetter(property) -%><% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(property.name) %>;
 
+<% if (property.original) { %>
+@property (nonatomic<% if (!property.required) { %>, null_resettable<% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(originalPropertyName(property)) %> __attribute__((unavailable("Use <%- camelizeWithLeadingLowercase(property.name) %> instead.")));
+
+<% } -%>
 <% } -%>
 <% } -%>
 <% if (paintProperties.length) { -%>
@@ -109,9 +119,17 @@ typedef NS_ENUM(NSUInteger, MGL<%- camelize(property.name) %>) {
 
  <%- propertyReqs(property, paintPropertiesByName, type) %>
 <% } -%>
+<% if (property.original) { -%>
+ 
+ This attribute corresponds to the <a href="https://www.mapbox.com/mapbox-gl-style-spec/#paint-<%- property.original -%>"><code><%- property.original -%></code></a> paint property in the Mapbox Style Specification.
+<% } -%>
  */
-@property (nonatomic<% if (!property.required) { %>, null_resettable<% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(property.name) %>;
+@property (nonatomic<% if (!property.required) { %>, null_resettable<% } if (property.getter) { %>, getter=<%- objCGetter(property) -%><% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(property.name) %>;
 
+<% if (property.original) { %>
+@property (nonatomic<% if (!property.required) { %>, null_resettable<% } %>) MGLStyleValue<<%- propertyType(property, true) %>> *<%- camelizeWithLeadingLowercase(originalPropertyName(property)) %> __attribute__((unavailable("Use <%- camelizeWithLeadingLowercase(property.name) %> instead.")));
+
+<% } -%>
 <% } -%>
 <% } -%>
 @end

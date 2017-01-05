@@ -36,6 +36,11 @@ module.exports = function (style, options, callback) {
         overdraw: options.showOverdrawInspector,
     };
 
+    options.center = style.center || [0, 0];
+    options.zoom = style.zoom || 0;
+    options.bearing = style.bearing || 0;
+    options.pitch = style.pitch || 0;
+
     map.load(style);
 
     applyOperations(options.operations, function() {
@@ -56,16 +61,22 @@ module.exports = function (style, options, callback) {
             callback();
 
         } else if (operation[0] === 'wait') {
-            var wait = function() {
-                if (map.loaded()) {
-                    applyOperations(operations.slice(1), callback);
-                } else {
-                    map.render(options, wait);
-                }
-            };
-            wait();
+            map.render(options, function () {
+                applyOperations(operations.slice(1), callback);
+            });
 
         } else {
+            // Ensure that the next `map.render(options)` does not overwrite this change.
+            if (operation[0] === 'setCenter') {
+                options.center = operation[1];
+            } else if (operation[0] === 'setZoom') {
+                options.zoom = operation[1];
+            } else if (operation[0] === 'setBearing') {
+                options.bearing = operation[1];
+            } else if (operation[0] === 'setPitch') {
+                options.pitch = operation[1];
+            }
+
             map[operation[0]].apply(map, operation.slice(1));
             applyOperations(operations.slice(1), callback);
         }

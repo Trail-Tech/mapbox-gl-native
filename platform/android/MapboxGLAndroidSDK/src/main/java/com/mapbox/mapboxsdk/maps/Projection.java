@@ -15,93 +15,106 @@ import com.mapbox.mapboxsdk.geometry.VisibleRegion;
  */
 public class Projection {
 
-    private final MapView mapView;
-    private final float screenDensity;
-    private final PointF screenLocationPoint;
+  private final NativeMapView nativeMapView;
+  private int[] contentPadding;
 
-    Projection(@NonNull MapView mapView) {
-        this.mapView = mapView;
-        this.screenLocationPoint = new PointF();
-        this.screenDensity = mapView.getContext() != null ? /* return default if unit test */
-                mapView.getContext().getResources().getDisplayMetrics().density : 1.0f;
-    }
+  Projection(@NonNull NativeMapView nativeMapView) {
+    this.nativeMapView = nativeMapView;
+    this.contentPadding = new int[] {0, 0, 0, 0};
+  }
 
-    /**
-     * <p>
-     * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
-     * </p>
-     * The distance between pixels decreases as the latitude approaches the poles.
-     * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
-     *
-     * @param latitude The latitude for which to return the value.
-     * @return The distance measured in meters.
-     */
-    public double getMetersPerPixelAtLatitude(@FloatRange(from = -90, to = 90) double latitude) {
-        return mapView.getMetersPerPixelAtLatitude(latitude);
-    }
+  void setContentPadding(int[] contentPadding, int[] userLocationViewPadding) {
+    this.contentPadding = contentPadding;
 
-    /**
-     * Returns the geographic location that corresponds to a screen location.
-     * The screen location is specified in screen pixels (not display pixels) relative to the
-     * top left of the map (not the top left of the whole screen).
-     *
-     * @param point A Point on the screen in screen pixels.
-     * @return The LatLng corresponding to the point on the screen, or null if the ray through
-     * the given screen point does not intersect the ground plane.
-     */
-    public LatLng fromScreenLocation(PointF point) {
-        screenLocationPoint.set(point.x / screenDensity, point.y / screenDensity);
-        return mapView.fromNativeScreenLocation(screenLocationPoint);
-    }
+    int[] padding = new int[] {
+      contentPadding[0] + userLocationViewPadding[0],
+      contentPadding[1] + userLocationViewPadding[1],
+      contentPadding[2] + userLocationViewPadding[2],
+      contentPadding[3] + userLocationViewPadding[3]
+    };
 
-    /**
-     * Gets a projection of the viewing frustum for converting between screen coordinates and
-     * geo-latitude/longitude coordinates.
-     *
-     * @return The projection of the viewing frustum in its current state.
-     */
-    public VisibleRegion getVisibleRegion() {
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+    nativeMapView.setContentPadding(padding);
+  }
 
-        float left = mapView.getContentPaddingLeft();
-        float right = mapView.getWidth() - mapView.getContentPaddingRight();
-        float top = mapView.getContentPaddingTop();
-        float bottom = mapView.getHeight() - mapView.getContentPaddingBottom();
+  int[] getContentPadding() {
+    return contentPadding;
+  }
 
-        LatLng topLeft = fromScreenLocation(new PointF(left, top));
-        LatLng topRight = fromScreenLocation(new PointF(right, top));
-        LatLng bottomRight = fromScreenLocation(new PointF(right, bottom));
-        LatLng bottomLeft = fromScreenLocation(new PointF(left, bottom));
+  public void invalidateContentPadding(int[] userLocationViewPadding) {
+    setContentPadding(contentPadding, userLocationViewPadding);
+  }
 
-        builder.include(topLeft)
-                .include(topRight)
-                .include(bottomRight)
-                .include(bottomLeft);
+  /**
+   * <p>
+   * Returns the distance spanned by one pixel at the specified latitude and current zoom level.
+   * </p>
+   * The distance between pixels decreases as the latitude approaches the poles.
+   * This relationship parallels the relationship between longitudinal coordinates at different latitudes.
+   *
+   * @param latitude The latitude for which to return the value.
+   * @return The distance measured in meters.
+   */
+  public double getMetersPerPixelAtLatitude(@FloatRange(from = -90, to = 90) double latitude) {
+    return nativeMapView.getMetersPerPixelAtLatitude(latitude);
+  }
 
-        return new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
-    }
+  /**
+   * Returns the geographic location that corresponds to a screen location.
+   * The screen location is specified in screen pixels (not display pixels) relative to the
+   * top left of the map (not the top left of the whole screen).
+   *
+   * @param point A Point on the screen in screen pixels.
+   * @return The LatLng corresponding to the point on the screen, or null if the ray through
+   * the given screen point does not intersect the ground plane.
+   */
+  public LatLng fromScreenLocation(PointF point) {
+    return nativeMapView.latLngForPixel(point);
+  }
 
-    /**
-     * Returns a screen location that corresponds to a geographical coordinate (LatLng).
-     * The screen location is in screen pixels (not display pixels) relative to the top left
-     * of the map (not of the whole screen).
-     *
-     * @param location A LatLng on the map to convert to a screen location.
-     * @return A Point representing the screen location in screen pixels.
-     */
-    public PointF toScreenLocation(LatLng location) {
-        PointF pointF = mapView.toNativeScreenLocation(location);
-        pointF.set(pointF.x * screenDensity, pointF.y * screenDensity);
-        return pointF;
-    }
+  /**
+   * Gets a projection of the viewing frustum for converting between screen coordinates and
+   * geo-latitude/longitude coordinates.
+   *
+   * @return The projection of the viewing frustum in its current state.
+   */
+  public VisibleRegion getVisibleRegion() {
+    LatLngBounds.Builder builder = new LatLngBounds.Builder();
 
-    /**
-     * Calculates a zoom level based on minimum scale and current scale from MapView
-     *
-     * @param minScale The minimum scale to calculate the zoom level.
-     * @return zoom level that fits the MapView.
-     */
-    public double calculateZoom(float minScale) {
-        return Math.log(mapView.getScale() * minScale) / Math.log(2);
-    }
+    float left = contentPadding[0];
+    float right = nativeMapView.getWidth() - contentPadding[2];
+    float top = contentPadding[1];
+    float bottom = nativeMapView.getHeight() - contentPadding[3];
+
+    LatLng topLeft = fromScreenLocation(new PointF(left, top));
+    LatLng topRight = fromScreenLocation(new PointF(right, top));
+    LatLng bottomRight = fromScreenLocation(new PointF(right, bottom));
+    LatLng bottomLeft = fromScreenLocation(new PointF(left, bottom));
+
+    builder.include(topLeft)
+      .include(topRight)
+      .include(bottomRight)
+      .include(bottomLeft);
+
+    return new VisibleRegion(topLeft, topRight, bottomLeft, bottomRight, builder.build());
+  }
+
+  /**
+   * Returns a screen location that corresponds to a geographical coordinate (LatLng).
+   * The screen location is in screen pixels (not display pixels) relative to the top left
+   * of the map (not of the whole screen).
+   *
+   * @param location A LatLng on the map to convert to a screen location.
+   * @return A Point representing the screen location in screen pixels.
+   */
+  public PointF toScreenLocation(LatLng location) {
+    return nativeMapView.pixelForLatLng(location);
+  }
+
+  float getHeight() {
+    return nativeMapView.getHeight();
+  }
+
+  float getWidth() {
+    return nativeMapView.getWidth();
+  }
 }

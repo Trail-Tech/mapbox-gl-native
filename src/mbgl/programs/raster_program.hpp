@@ -11,8 +11,7 @@ namespace mbgl {
 namespace uniforms {
 MBGL_DEFINE_UNIFORM_SCALAR(gl::TextureUnit, u_image0);
 MBGL_DEFINE_UNIFORM_SCALAR(gl::TextureUnit, u_image1);
-MBGL_DEFINE_UNIFORM_SCALAR(float, u_opacity0);
-MBGL_DEFINE_UNIFORM_SCALAR(float, u_opacity1);
+MBGL_DEFINE_UNIFORM_SCALAR(float, u_fade_t);
 MBGL_DEFINE_UNIFORM_SCALAR(float, u_buffer_scale);
 MBGL_DEFINE_UNIFORM_SCALAR(float, u_brightness_low);
 MBGL_DEFINE_UNIFORM_SCALAR(float, u_brightness_high);
@@ -23,18 +22,20 @@ MBGL_DEFINE_UNIFORM_VECTOR(float, 3, u_spin_weights);
 MBGL_DEFINE_UNIFORM_VECTOR(float, 2, u_tl_parent);
 } // namespace uniforms
 
+using RasterAttributes = gl::Attributes<
+    attributes::a_pos,
+    attributes::a_texture_pos>;
+
 class RasterProgram : public Program<
     shaders::raster,
     gl::Triangle,
-    gl::Attributes<
-        attributes::a_pos,
-        attributes::a_texture_pos>,
+    RasterAttributes,
     gl::Uniforms<
         uniforms::u_matrix,
         uniforms::u_image0,
         uniforms::u_image1,
-        uniforms::u_opacity0,
-        uniforms::u_opacity1,
+        uniforms::u_opacity,
+        uniforms::u_fade_t,
         uniforms::u_brightness_low,
         uniforms::u_brightness_high,
         uniforms::u_saturation_factor,

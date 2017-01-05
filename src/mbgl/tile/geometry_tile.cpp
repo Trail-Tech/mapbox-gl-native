@@ -61,6 +61,12 @@ void GeometryTile::setPlacementConfig(const PlacementConfig& desiredConfig) {
         return;
     }
 
+    // Mark the tile as pending again if it was complete before to prevent signaling a complete
+    // state despite pending parse operations.
+    if (availableData == DataAvailability::All) {
+        availableData = DataAvailability::Some;
+    }
+
     ++correlationID;
     requestedConfig = desiredConfig;
     worker.invoke(&GeometryTileWorker::setPlacementConfig, desiredConfig, correlationID);
@@ -122,7 +128,7 @@ void GeometryTile::onError(std::exception_ptr err) {
 }
 
 Bucket* GeometryTile::getBucket(const Layer& layer) {
-    const auto it = buckets.find(layer.baseImpl->bucketName());
+    const auto it = buckets.find(layer.baseImpl->id);
     if (it == buckets.end()) {
         return nullptr;
     }

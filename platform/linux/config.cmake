@@ -1,8 +1,8 @@
 mason_use(glfw VERSION 3.2.1)
-if (WITH_OSMESA OR IS_CI_BUILD)
+if(IS_CI_BUILD AND NOT WITH_EGL)
     mason_use(mesa VERSION 13.0.0${MASON_MESA_SUFFIX}${MASON_CXXABI_SUFFIX})
 endif()
-mason_use(boost_libprogram_options VERSION 1.60.0)
+mason_use(boost_libprogram_options VERSION 1.62.0)
 mason_use(sqlite VERSION 3.14.2)
 mason_use(libuv VERSION 1.9.1)
 mason_use(nunicode VERSION 1.7.1)
@@ -11,16 +11,29 @@ mason_use(libjpeg-turbo VERSION 1.5.0)
 mason_use(webp VERSION 0.5.1)
 mason_use(gtest VERSION 1.7.0${MASON_CXXABI_SUFFIX})
 mason_use(benchmark VERSION 1.0.0)
+mason_use(icu VERSION 58.1)
 
 include(cmake/loop-uv.cmake)
 
 macro(mbgl_platform_core)
-    if (WITH_OSMESA)
+    if(WITH_OSMESA)
         target_sources(mbgl-core
             PRIVATE platform/default/headless_backend_osmesa.cpp
-            PRIVATE platform/default/headless_display.cpp
+            PRIVATE platform/default/mbgl/gl/headless_display.cpp
         )
         target_add_mason_package(mbgl-core PUBLIC mesa)
+    elseif(WITH_EGL)
+        target_sources(mbgl-core
+            PRIVATE platform/linux/src/headless_backend_egl.cpp
+            PRIVATE platform/linux/src/headless_display_egl.cpp
+        )
+        # TODO: Provide surface-less EGL mesa for CI builds.
+        # https://github.com/mapbox/mapbox-gl-native/issues/7020
+        target_link_libraries(mbgl-core
+            PUBLIC -lGLESv2
+            PUBLIC -lEGL
+            PUBLIC -lgbm
+        )
     else()
         target_sources(mbgl-core
             PRIVATE platform/linux/src/headless_backend_glx.cpp
@@ -28,6 +41,7 @@ macro(mbgl_platform_core)
         )
         if (IS_CI_BUILD)
             target_add_mason_package(mbgl-core PUBLIC mesa)
+            target_link_libraries(mbgl-core PUBLIC -lX11)
         else()
             target_link_libraries(mbgl-core
                 PUBLIC -lGL
@@ -54,9 +68,10 @@ macro(mbgl_platform_core)
         PRIVATE platform/default/sqlite3.hpp
 
         # Misc
-        PRIVATE platform/default/log_stderr.cpp
+        PRIVATE platform/default/logging_stderr.cpp
         PRIVATE platform/default/string_stdlib.cpp
         PRIVATE platform/default/thread.cpp
+        PRIVATE platform/default/bidi.cpp
 
         # Image handling
         PRIVATE platform/default/image.cpp
@@ -65,11 +80,15 @@ macro(mbgl_platform_core)
         PRIVATE platform/default/webp_reader.cpp
 
         # Headless view
-        PRIVATE platform/default/headless_backend.cpp
-        PRIVATE platform/default/offscreen_view.cpp
+        PRIVATE platform/default/mbgl/gl/headless_backend.cpp
+        PRIVATE platform/default/mbgl/gl/headless_backend.hpp
+        PRIVATE platform/default/mbgl/gl/headless_display.hpp
+        PRIVATE platform/default/mbgl/gl/offscreen_view.cpp
+        PRIVATE platform/default/mbgl/gl/offscreen_view.hpp
 
         # Thread pool
-        PRIVATE platform/default/thread_pool.cpp
+        PRIVATE platform/default/mbgl/util/default_thread_pool.cpp
+        PRIVATE platform/default/mbgl/util/default_thread_pool.cpp
     )
 
     target_include_directories(mbgl-core
@@ -81,6 +100,7 @@ macro(mbgl_platform_core)
     target_add_mason_package(mbgl-core PUBLIC libpng)
     target_add_mason_package(mbgl-core PUBLIC libjpeg-turbo)
     target_add_mason_package(mbgl-core PUBLIC webp)
+    target_add_mason_package(mbgl-core PUBLIC icu)
 
     target_link_libraries(mbgl-core
         PUBLIC -lz

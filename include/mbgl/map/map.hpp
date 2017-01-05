@@ -157,11 +157,13 @@ public:
     void removeAnnotation(AnnotationID);
 
     // Sources
+    std::vector<style::Source*> getSources();
     style::Source* getSource(const std::string& sourceID);
     void addSource(std::unique_ptr<style::Source>);
     std::unique_ptr<style::Source> removeSource(const std::string& sourceID);
 
     // Layers
+    std::vector<style::Layer*> getLayers();
     style::Layer* getLayer(const std::string& layerID);
     void addLayer(std::unique_ptr<style::Layer>, const optional<std::string>& beforeLayerID = {});
     std::unique_ptr<style::Layer> removeLayer(const std::string& layerID);
@@ -169,6 +171,7 @@ public:
     // Add image, bound to the style
     void addImage(const std::string&, std::unique_ptr<const SpriteImage>);
     void removeImage(const std::string&);
+    const SpriteImage* getImage(const std::string&);
 
     // Defaults
     std::string getStyleName() const;

@@ -21,7 +21,7 @@ void Painter::renderLine(PaintParameters& parameters,
         return;
     }
 
-    const auto& properties = layer.impl->paint;
+    const LinePaintProperties::Evaluated& properties = layer.impl->paint.evaluated;
 
     auto draw = [&] (auto& program, auto&& uniformValues) {
         program.draw(
@@ -37,11 +37,11 @@ void Painter::renderLine(PaintParameters& parameters,
         );
     };
 
-    if (!properties.lineDasharray.value.from.empty()) {
-        const LinePatternCap cap = bucket.layout.lineCap == LineCapType::Round
+    if (!properties.get<LineDasharray>().from.empty()) {
+        const LinePatternCap cap = bucket.layout.get<LineCap>() == LineCapType::Round
             ? LinePatternCap::Round : LinePatternCap::Square;
-        LinePatternPos posA = lineAtlas->getDashPosition(properties.lineDasharray.value.from, cap);
-        LinePatternPos posB = lineAtlas->getDashPosition(properties.lineDasharray.value.to, cap);
+        LinePatternPos posA = lineAtlas->getDashPosition(properties.get<LineDasharray>().from, cap);
+        LinePatternPos posB = lineAtlas->getDashPosition(properties.get<LineDasharray>().to, cap);
 
         lineAtlas->bind(context, 0);
 
@@ -51,16 +51,17 @@ void Painter::renderLine(PaintParameters& parameters,
                  frame.pixelRatio,
                  tile,
                  state,
+                 pixelsToGLUnits,
                  posA,
                  posB,
                  layer.impl->dashLineWidth,
                  lineAtlas->getSize().width));
 
-    } else if (!properties.linePattern.value.from.empty()) {
+    } else if (!properties.get<LinePattern>().from.empty()) {
         optional<SpriteAtlasPosition> posA = spriteAtlas->getPosition(
-            properties.linePattern.value.from, SpritePatternMode::Repeating);
+            properties.get<LinePattern>().from, SpritePatternMode::Repeating);
         optional<SpriteAtlasPosition> posB = spriteAtlas->getPosition(
-            properties.linePattern.value.to, SpritePatternMode::Repeating);
+            properties.get<LinePattern>().to, SpritePatternMode::Repeating);
 
         if (!posA || !posB)
             return;
@@ -70,9 +71,9 @@ void Painter::renderLine(PaintParameters& parameters,
         draw(parameters.programs.linePattern,
              LinePatternProgram::uniformValues(
                  properties,
-                 frame.pixelRatio,
                  tile,
                  state,
+                 pixelsToGLUnits,
                  *posA,
                  *posB));
 
@@ -80,9 +81,9 @@ void Painter::renderLine(PaintParameters& parameters,
         draw(parameters.programs.line,
              LineProgram::uniformValues(
                  properties,
-                 frame.pixelRatio,
                  tile,
-                 state));
+                 state,
+                 pixelsToGLUnits));
     }
 }
 

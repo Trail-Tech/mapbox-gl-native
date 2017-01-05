@@ -4,8 +4,8 @@
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/storage/file_source.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -41,7 +41,9 @@ public:
     static void SetPaintProperty(const Nan::FunctionCallbackInfo<v8::Value>&);
     static void SetFilter(const Nan::FunctionCallbackInfo<v8::Value>&);
     static void SetCenter(const Nan::FunctionCallbackInfo<v8::Value>&);
+    static void SetZoom(const Nan::FunctionCallbackInfo<v8::Value>&);
     static void SetBearing(const Nan::FunctionCallbackInfo<v8::Value>&);
+    static void SetPitch(const Nan::FunctionCallbackInfo<v8::Value>&);
     static void DumpDebugLogs(const Nan::FunctionCallbackInfo<v8::Value>&);
     static void QueryRenderedFeatures(const Nan::FunctionCallbackInfo<v8::Value>&);
 

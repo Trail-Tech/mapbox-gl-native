@@ -54,6 +54,7 @@ To add any Objective-C type, constant, or member to the iOS SDK’s public inter
 
 To add an Objective-C class, protocol, category, typedef, enumeration, or global constant to the macOS SDK’s public interface:
 
+1. _(Optional.)_ Add the macro `MGL_EXPORT` prior to the declaration for classes and global constants. To use this macro, include `MGLFoundation.h`. You can check whether all public symbols are exported correctly by running `make check-public-symbols`.
 1. _(Optional.)_ Add the type or constant’s name to the relevant category in the `custom_categories` section of [the jazzy configuration file](./jazzy.yml). This is required for classes and protocols and also recommended for any other type that is strongly associated with a particular class or protocol. If you leave out this step, the symbol will appear in an “Other” section in the generated HTML documentation’s table of contents.
 1. _(Optional.)_ If the symbol would also be publicly exposed in the iOS SDK, consult [the companion iOS document](../ios/DEVELOPING.md#making-a-type-or-constant-public) for further instructions.
 
@@ -85,6 +86,15 @@ To add or update text that the user may see in the macOS SDK:
   * `val` is the English string.
 1. _(Optional.)_ When dealing with a number followed by a pluralized word, do not split the string. Instead, use a format string and make `val` ambiguous, like `%d file(s)`. Then pluralize for English in the appropriate [.stringsdict file](https://developer.apple.com/library/mac/documentation/MacOSX/Conceptual/BPInternational/StringsdictFileFormat/StringsdictFileFormat.html). See [platform/darwin/resources/en.lproj/Foundation.stringsdict](../darwin/resources/en.lproj/Foundation.stringsdict) for an example. Localizers should do likewise for their languages.
 1. Run `make genstrings` and commit any changes it makes to .strings files. The make rule also updates the iOS SDK’s strings tables.
+
+### Adding a localization
+
+To add a localization to the macOS SDK:
+
+1. In macos.xcworkspace, open the project editor for macos.xcodeproj. Using the project editor’s sidebar or tab bar dropdown, go to the “macos” project; under the Localizations section of the Info tab, click the + button to add your language to the project.
+1. In the sheet that appears, select all the .strings and .stringsdict files but no .xib file. (Most of the XIBs are part of the macosapp example application, which is not localized, while MGLAnnotationCallout.xib contains no localizable strings.)
+1. In the Project navigator, expand each .strings and .stringsdict file in the project. An additional version for your localization should be listed; translate it. Translate everything on the right side of the equals sign. Leave the left side and any comments unmodified. See Apple’s documentation on the [.strings](https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/LoadingResources/Strings/Strings.html) and [.stringsdict](https://developer.apple.com/library/content/documentation/MacOSX/Conceptual/BPInternational/StringsdictFileFormat/StringsdictFileFormat.html) formats.
+1. You’re already most of the way towards localizing the iOS SDK too – consider [completing that localization](../ios/DEVELOPING.md#adding-a-localization).
 
 ## Access tokens
 

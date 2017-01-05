@@ -2,9 +2,10 @@
 #define QMAPBOXGL_H
 
 #include <QMapbox>
+#include <QMargins>
 #include <QObject>
-#include <QSize>
 #include <QPointF>
+#include <QSize>
 
 class QImage;
 class QMargins;
@@ -22,11 +23,6 @@ class Q_DECL_EXPORT QMapboxGLSettings
 public:
     QMapboxGLSettings();
 
-    enum MapMode {
-        ContinuousMap = 0,
-        StillMap
-    };
-
     enum GLContextMode {
         UniqueGLContext = 0,
         SharedGLContext
@@ -42,9 +38,6 @@ public:
         DefaultViewport = 0,
         FlippedYViewport
     };
-
-    MapMode mapMode() const;
-    void setMapMode(MapMode);
 
     GLContextMode contextMode() const;
     void setContextMode(GLContextMode);
@@ -67,8 +60,10 @@ public:
     QString accessToken() const;
     void setAccessToken(const QString &);
 
+    QString apiBaseUrl() const;
+    void setApiBaseUrl(const QString &);
+
 private:
-    MapMode m_mapMode;
     GLContextMode m_contextMode;
     ConstrainMode m_constrainMode;
     ViewportMode m_viewportMode;
@@ -77,6 +72,15 @@ private:
     QString m_cacheDatabasePath;
     QString m_assetPath;
     QString m_accessToken;
+    QString m_apiBaseUrl;
+};
+
+struct Q_DECL_EXPORT QMapboxGLCameraOptions {
+    QVariant center;  // Coordinate
+    QVariant anchor;  // QPointF
+    QVariant zoom;    // double
+    QVariant angle;   // double
+    QVariant pitch;   // double
 };
 
 class Q_DECL_EXPORT QMapboxGL : public QObject
@@ -87,8 +91,33 @@ class Q_DECL_EXPORT QMapboxGL : public QObject
     Q_PROPERTY(double zoom READ zoom WRITE setZoom)
     Q_PROPERTY(double bearing READ bearing WRITE setBearing)
     Q_PROPERTY(double pitch READ pitch WRITE setPitch)
+    Q_PROPERTY(QString styleJson READ styleJson WRITE setStyleJson)
+    Q_PROPERTY(QString styleUrl READ styleUrl WRITE setStyleUrl)
+    Q_PROPERTY(double scale READ scale WRITE setScale)
+    Q_PROPERTY(QMapbox::Coordinate coordinate READ coordinate WRITE setCoordinate)
+    Q_PROPERTY(QMargins margins READ margins WRITE setMargins)
 
 public:
+    // Reflects mbgl::MapChange.
+    enum MapChange {
+        MapChangeRegionWillChange = 0,
+        MapChangeRegionWillChangeAnimated,
+        MapChangeRegionIsChanging,
+        MapChangeRegionDidChange,
+        MapChangeRegionDidChangeAnimated,
+        MapChangeWillStartLoadingMap,
+        MapChangeDidFinishLoadingMap,
+        MapChangeDidFailLoadingMap,
+        MapChangeWillStartRenderingFrame,
+        MapChangeDidFinishRenderingFrame,
+        MapChangeDidFinishRenderingFrameFullyRendered,
+        MapChangeWillStartRenderingMap,
+        MapChangeDidFinishRenderingMap,
+        MapChangeDidFinishRenderingMapFullyRendered,
+        MapChangeDidFinishLoadingStyle,
+        MapChangeSourceDidChange
+    };
+
     // Determines the orientation of the map.
     enum NorthOrientation {
         NorthUpwards, // Default
@@ -140,7 +169,7 @@ public:
     void setCoordinate(const QMapbox::Coordinate &);
     void setCoordinateZoom(const QMapbox::Coordinate &, double zoom);
 
-    void jumpTo(const QMapbox::CameraOptions&);
+    void jumpTo(const QMapboxGLCameraOptions&);
 
     void setGestureInProgress(bool inProgress);
 
@@ -150,8 +179,7 @@ public:
     void setClasses(const QStringList &);
     QStringList getClasses() const;
 
-    QMapbox::TransitionOptions getTransitionOptions() const;
-    void setTransitionOptions(const QMapbox::TransitionOptions&);
+    void setTransitionOptions(qint64 duration, qint64 delay = 0);
 
     QMapbox::AnnotationID addPointAnnotation(const QMapbox::PointAnnotation &);
     QMapbox::AnnotationID addShapeAnnotation(const QMapbox::ShapeAnnotation &);
@@ -186,6 +214,7 @@ public:
     QMargins margins() const;
 
     void addSource(const QString &sourceID, const QVariantMap& params);
+    void updateSource(const QString &sourceID, const QVariantMap& params);
     void removeSource(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
 
@@ -213,12 +242,15 @@ public slots:
 
 signals:
     void needsRendering();
-    void mapChanged(QMapbox::MapChange);
+    void mapChanged(QMapboxGL::MapChange);
+    void copyrightsChanged(const QString &copyrightsHtml);
 
 private:
     Q_DISABLE_COPY(QMapboxGL)
 
     QMapboxGLPrivate *d_ptr;
 };
+
+Q_DECLARE_METATYPE(QMapboxGL::MapChange);
 
 #endif // QMAPBOXGL_H

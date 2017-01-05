@@ -8,15 +8,15 @@ void BackgroundLayer::Impl::cascade(const CascadeParameters& parameters) {
     paint.cascade(parameters);
 }
 
-bool BackgroundLayer::Impl::recalculate(const CalculationParameters& parameters) {
-    bool hasTransitions = paint.recalculate(parameters);
+bool BackgroundLayer::Impl::evaluate(const PropertyEvaluationParameters& parameters) {
+    paint.evaluate(parameters);
 
-    passes = paint.backgroundOpacity > 0 ? RenderPass::Translucent : RenderPass::None;
+    passes = paint.evaluated.get<BackgroundOpacity>() > 0 ? RenderPass::Translucent : RenderPass::None;
 
-    return hasTransitions;
+    return paint.hasTransition();
 }
 
-std::unique_ptr<Bucket> BackgroundLayer::Impl::createBucket(BucketParameters&) const {
+std::unique_ptr<Bucket> BackgroundLayer::Impl::createBucket(BucketParameters&, const GeometryTileLayer&) const {
     return nullptr;
 }
 

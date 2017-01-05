@@ -1,7 +1,7 @@
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/headless_display.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/headless_display.hpp>
 
-#include <mbgl/platform/log.hpp>
+#include <mbgl/util/logging.hpp>
 
 #include <cassert>
 

@@ -52,7 +52,7 @@ endif
 
 .NOTPARALLEL: node_modules
 node_modules: package.json
-	npm update # Install dependencies but don't run our own install script.
+	npm install --ignore-scripts # Install dependencies but don't run our own install script.
 
 BUILD_DEPS += .mason/mason
 BUILD_DEPS += Makefile
@@ -277,6 +277,10 @@ idocument:
 darwin-style-code:
 	node platform/darwin/scripts/generate-style-code.js
 style-code: darwin-style-code
+
+.PHONY: check-public-symbols
+check-public-symbols:
+	node platform/darwin/scripts/check-public-symbols.js macOS
 endif
 
 #### Linux targets #####################################################
@@ -295,7 +299,8 @@ $(LINUX_BUILD): $(BUILD_DEPS)
 		-DWITH_CXX11ABI=$(shell scripts/check-cxx11abi.sh) \
 		-DWITH_COVERAGE=${WITH_COVERAGE} \
 		-DIS_CI_BUILD=${CI} \
-		-DWITH_OSMESA=${WITH_OSMESA})
+		-DWITH_OSMESA=${WITH_OSMESA} \
+		-DWITH_EGL=${WITH_EGL})
 
 .PHONY: linux
 linux: glfw-app render offline
@@ -388,6 +393,7 @@ $(QT_BUILD): $(BUILD_DEPS)
 		-DMASON_PLATFORM=$(BUILD_PLATFORM) \
 		-DMASON_PLATFORM_VERSION=$(BUILD_PLATFORM_VERSION) \
 		-DWITH_QT_DECODERS=${WITH_QT_DECODERS} \
+		-DWITH_QT_I18N=${WITH_QT_I18N} \
 		-DWITH_QT_4=${WITH_QT_4} \
 		-DWITH_CXX11ABI=$(shell scripts/check-cxx11abi.sh) \
 		-DWITH_COVERAGE=${WITH_COVERAGE} \
@@ -403,6 +409,7 @@ $(MACOS_QT_PROJ_PATH): $(BUILD_DEPS)
 		-DMASON_PLATFORM=$(BUILD_PLATFORM) \
 		-DMASON_PLATFORM_VERSION=$(BUILD_PLATFORM_VERSION) \
 		-DWITH_QT_DECODERS=${WITH_QT_DECODERS} \
+		-DWITH_QT_I18N=${WITH_QT_I18N} \
 		-DWITH_QT_4=${WITH_QT_4} \
 		-DWITH_CXX11ABI=$(shell scripts/check-cxx11abi.sh) \
 		-DWITH_COVERAGE=${WITH_COVERAGE} \
@@ -466,8 +473,13 @@ test-node: node
 
 #### Android targets ###########################################################
 
-ANDROID_ENV = platform/android/scripts/toolchain.sh
-ANDROID_ABIS = arm-v5 arm-v7 arm-v8 x86 x86-64 mips
+MBGL_ANDROID_ENV = platform/android/scripts/toolchain.sh
+MBGL_ANDROID_ABIS = arm-v5 arm-v7 arm-v8 x86 x86-64 mips
+MBGL_ANDROID_LOCAL_WORK_DIR = /data/local/tmp/core-tests
+MBGL_ANDROID_LIBDIR = lib$(if $(filter arm-v8 x86-64,$1),64)
+MBGL_ANDROID_DALVIKVM = dalvikvm$(if $(filter arm-v8 x86-64,$1),64,32)
+MBGL_ANDROID_APK_SUFFIX = $(if $(filter Release,$(BUILDTYPE)),release-unsigned,debug)
+MBGL_ANDROID_CORE_TEST_DIR = build/android-$1/$(BUILDTYPE)/core-tests
 
 .PHONY: android-style-code
 android-style-code:
@@ -480,7 +492,7 @@ build/android-$1/$(BUILDTYPE): $(BUILD_DEPS)
 	mkdir -p build/android-$1/$(BUILDTYPE)
 
 build/android-$1/$(BUILDTYPE)/toolchain.cmake: platform/android/scripts/toolchain.sh build/android-$1/$(BUILDTYPE)
-	$(ANDROID_ENV) $1 > build/android-$1/$(BUILDTYPE)/toolchain.cmake
+	$(MBGL_ANDROID_ENV) $1 > build/android-$1/$(BUILDTYPE)/toolchain.cmake
 
 build/android-$1/$(BUILDTYPE)/Makefile: build/android-$1/$(BUILDTYPE)/toolchain.cmake platform/android/config.cmake
 	cd build/android-$1/$(BUILDTYPE) && cmake ../../.. -G Ninja \
@@ -489,32 +501,81 @@ build/android-$1/$(BUILDTYPE)/Makefile: build/android-$1/$(BUILDTYPE)/toolchain.
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 		-DMBGL_PLATFORM=android
 
+.PHONY: android-test-lib-$1
+android-test-lib-$1: build/android-$1/$(BUILDTYPE)/Makefile
+	$(NINJA) $(NINJA_ARGS) -j$(JOBS) -C build/android-$1/$(BUILDTYPE) mbgl-test
+
 .PHONY: android-lib-$1
 android-lib-$1: build/android-$1/$(BUILDTYPE)/Makefile
-	$(NINJA) $(NINJA_ARGS) -j$(JOBS) -C build/android-$1/$(BUILDTYPE) all
+	$(NINJA) $(NINJA_ARGS) -j$(JOBS) -C build/android-$1/$(BUILDTYPE) mapbox-gl example-custom-layer
 
 .PHONY: android-$1
 android-$1: android-lib-$1
-	cd platform/android && ./gradlew --parallel --max-workers=$(JOBS) assemble$(BUILDTYPE)
+	cd platform/android && ./gradlew --parallel --max-workers=$(JOBS) :MapboxGLAndroidSDKTestApp:assemble$(BUILDTYPE)
+
+.PHONY: android-core-test-$1
+android-core-test-$1: android-test-lib-$1
+	mkdir -p $(MBGL_ANDROID_CORE_TEST_DIR)
+
+	# Compile main sources and extract the classes (using the test app to get all transitive dependencies in one place)
+	cd platform/android && ./gradlew :MapboxGLAndroidSDKTestApp:assemble$(BUILDTYPE)
+	unzip -o platform/android/MapboxGLAndroidSDKTestApp/build/outputs/apk/MapboxGLAndroidSDKTestApp-$(MBGL_ANDROID_APK_SUFFIX).apk classes.dex -d $(MBGL_ANDROID_CORE_TEST_DIR)
+
+	# Compile Test runner
+	find platform/android/src/test -name "*.java" > $(MBGL_ANDROID_CORE_TEST_DIR)/java-sources.txt
+	javac -sourcepath platform/android/src/test -d $(MBGL_ANDROID_CORE_TEST_DIR) -source 1.7 -target 1.7 @$(MBGL_ANDROID_CORE_TEST_DIR)/java-sources.txt
+
+	# Combine and dex
+	cd $(MBGL_ANDROID_CORE_TEST_DIR) && $(ANDROID_HOME)/build-tools/25.0.0/dx --dex --output=test.jar *.class classes.dex
+
+run-android-core-test-$1-%: android-core-test-$1
+	# Ensure clean state on the device
+	adb shell "rm -Rf $(MBGL_ANDROID_LOCAL_WORK_DIR) && mkdir -p $(MBGL_ANDROID_LOCAL_WORK_DIR)/test"
+
+	# Generate zipped asset files
+	cd test/fixtures/api && zip -r assets.zip assets && cd -
+	cd test/fixtures/storage && zip -r assets.zip assets && cd -
+
+	# Push all needed files to the device
+	adb push $(MBGL_ANDROID_CORE_TEST_DIR)/test.jar $(MBGL_ANDROID_LOCAL_WORK_DIR) > /dev/null 2>&1
+	adb push test/fixtures $(MBGL_ANDROID_LOCAL_WORK_DIR)/test > /dev/null 2>&1
+	adb push build/android-$1/$(BUILDTYPE)/stripped/libmapbox-gl.so $(MBGL_ANDROID_LOCAL_WORK_DIR) > /dev/null 2>&1
+	adb push build/android-$1/$(BUILDTYPE)/stripped/libmbgl-test.so $(MBGL_ANDROID_LOCAL_WORK_DIR) > /dev/null 2>&1
+
+	# Kick off the tests
+	adb shell "export LD_LIBRARY_PATH=/system/$(MBGL_ANDROID_LIBDIR):$(MBGL_ANDROID_LOCAL_WORK_DIR) && cd $(MBGL_ANDROID_LOCAL_WORK_DIR) && $(MBGL_ANDROID_DALVIKVM) -cp $(MBGL_ANDROID_LOCAL_WORK_DIR)/test.jar Main --gtest_filter=$$*"
+
+	# Gather the results and unpack them
+	adb shell "cd $(MBGL_ANDROID_LOCAL_WORK_DIR) && tar -cvzf results.tgz test/fixtures/*  > /dev/null 2>&1"
+	adb pull $(MBGL_ANDROID_LOCAL_WORK_DIR)/results.tgz $(MBGL_ANDROID_CORE_TEST_DIR)/ > /dev/null 2>&1
+	rm -rf $(MBGL_ANDROID_CORE_TEST_DIR)/results && mkdir -p $(MBGL_ANDROID_CORE_TEST_DIR)/results
+	tar -xzf $(MBGL_ANDROID_CORE_TEST_DIR)/results.tgz --strip-components=2 -C $(MBGL_ANDROID_CORE_TEST_DIR)/results
+
+.PHONY: run-android-core-test-$1
+run-android-core-test-$1: run-android-core-test-$1-*
 
 .PHONY: run-android-$1
 run-android-$1: android-$1
-	cd platform/android  && ./gradlew :MapboxGLAndroidSDKTestApp:installDebug && adb shell am start -n com.mapbox.mapboxsdk.testapp/.activity.FeatureOverviewActivity	
+	cd platform/android && ./gradlew :MapboxGLAndroidSDKTestApp:install$(BUILDTYPE) && adb shell am start -n com.mapbox.mapboxsdk.testapp/.activity.FeatureOverviewActivity
 
 apackage: android-lib-$1
 endef
 
-$(foreach abi,$(ANDROID_ABIS),$(eval $(call ANDROID_RULES,$(abi))))
+$(foreach abi,$(MBGL_ANDROID_ABIS),$(eval $(call ANDROID_RULES,$(abi))))
 
 .PHONY: android
 android: android-arm-v7
 
 .PHONY: run-android
 run-android: run-android-arm-v7
-	 
+
 .PHONY: run-android-unit-test
 run-android-unit-test:
 	cd platform/android && ./gradlew :MapboxGLAndroidSDKTestApp:testDebugUnitTest --continue
+
+.PHONY: run-android-wear-unit-test
+run-android-wear-unit-test:
+	cd platform/android && ./gradlew :MapboxGLAndroidSDKWearTestApp:testDebugUnitTest --continue
 
 .PHONY: android-ui-test
 android-ui-test:
@@ -522,11 +583,19 @@ android-ui-test:
 
 .PHONY: run-android-ui-test
 run-android-ui-test:
-	cd platform/android && ./gradlew :MapboxGLAndroidSDKTestApp:connectedAndroidTest -i	
+	cd platform/android && ./gradlew :MapboxGLAndroidSDKTestApp:connectedAndroidTest -i
+
+.PHONY: run-android-ui-test-aws
+run-android-ui-test-aws:
+	cd platform/android && ./gradlew devicefarmUpload
+
+.PHONY: run-android-ui-test-spoon
+run-android-ui-test-spoon:
+	cd platform/android && ./gradlew spoon
 
 .PHONY: apackage
 apackage:
-	cd platform/android && ./gradlew --parallel-threads=$(JOBS) assemble$(BUILDTYPE)
+	cd platform/android && ./gradlew --parallel --max-workers=$(JOBS) assemble$(BUILDTYPE)
 
 .PHONY: test-code-android
 test-code-android:
@@ -534,7 +603,11 @@ test-code-android:
 
 .PHONY: android-ndk-stack
 android-ndk-stack:
-	adb logcat | ndk-stack -sym build/android-arm-v7/Debug	
+	adb logcat | ndk-stack -sym build/android-arm-v7/Debug
+
+.PHONY: android-checkstyle
+android-checkstyle:
+	cd platform/android && ./gradlew checkstyle
 
 #### Miscellaneous targets #####################################################
 

@@ -15,7 +15,6 @@ import java.util.List;
 
 public class FeatureOverviewActivity extends WearableActivity implements FeatureAdapter.ItemSelectedListener {
 
-  private static final String TAG = "MainActivity";
   private WearableRecyclerView wearableRecyclerView;
   private List<Feature> exampleItemModels;
 
@@ -32,7 +31,8 @@ public class FeatureOverviewActivity extends WearableActivity implements Feature
     wearableRecyclerView.setOffsettingHelper(offsettingHelper);
 
     exampleItemModels = new ArrayList<>();
-    exampleItemModels.add(new Feature(R.string.activity_simple_mapview_title, new Intent(FeatureOverviewActivity.this, SimpleMapViewActivity.class)));
+    exampleItemModels.add(new Feature(R.string.activity_simple_mapview_title, new Intent(FeatureOverviewActivity.this,
+      SimpleMapViewActivity.class)));
 
     FeatureAdapter exampleAdapter = new FeatureAdapter(FeatureOverviewActivity.this, exampleItemModels);
     wearableRecyclerView.setAdapter(exampleAdapter);

@@ -1,18 +1,20 @@
 #import <Foundation/Foundation.h>
 
+#import "MGLFoundation.h"
 #import "MGLForegroundStyleLayer.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 /**
  `MGLVectorStyleLayer` is an abstract superclass for style layers whose content
- is defined by an `MGLGeoJSONSource` or `MGLVectorSource` object.
+ is defined by an `MGLShapeSource` or `MGLVectorSource` object.
  
  Do not create instances of this class directly, and do not create your own
  subclasses of this class. Instead, create instances of the following concrete
  subclasses: `MGLCircleStyleLayer`, `MGLFillStyleLayer`, `MGLLineStyleLayer`,
  and `MGLSymbolStyleLayer`.
  */
+MGL_EXPORT
 @interface MGLVectorStyleLayer : MGLForegroundStyleLayer
 
 #pragma mark Refining a Style Layer’s Content
@@ -52,10 +54,11 @@ NS_ASSUME_NONNULL_BEGIN
  <li><code>NSNotPredicateType</code> (<code>NOT</code>, <code>!</code>)</li>
  </ul>
  
- The following aggregate operator is supported:
+ The following aggregate operators are supported:
  
  <ul>
  <li><code>NSInPredicateOperatorType</code> (<code>IN</code>)</li>
+ <li><code>NSContainsPredicateOperatorType</code> (<code>CONTAINS</code>)</li>
  </ul>
  
  To test whether a feature has or lacks a specific attribute, compare the attribute to `NULL` or `NIL`. Predicates created using the `+[NSPredicate predicateWithValue:]` method are also supported. String operators and custom operators are not supported.
@@ -118,7 +121,15 @@ NS_ASSUME_NONNULL_BEGIN
  
  Automatic type casting is not performed. Therefore, a feature only matches this
  predicate if its value for the attribute in question is of the same type as the
- value specified in the predicate.
+ value specified in the predicate. Also, operator modifiers `c`, `d`, and the
+ combined `cd` for case and diacritic insensitivity are unsupported for 
+ comparison and aggregate operators that are used in the predicate.
+ 
+ It is possible to create expressions that contain special characters in the 
+ predicate format syntax. This includes the `$` in the `$id` and `$type` special 
+ style attributes and also `hyphen-minus` and `tag:subtag`. However, you must use
+ `%K` in the format string to represent these variables:
+ `@"%K == 'LineString'", @"$type"`.
  */
 @property (nonatomic, nullable) NSPredicate *predicate;
 
