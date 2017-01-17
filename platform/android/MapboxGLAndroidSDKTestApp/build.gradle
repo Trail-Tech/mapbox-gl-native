@@ -9,7 +9,7 @@ ext {
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.1"
+    buildToolsVersion "25.0.2"
 
     defaultConfig {
         applicationId "com.mapbox.mapboxsdk.testapp"
@@ -71,6 +71,11 @@ dependencies {
     debugCompile "com.squareup.leakcanary:leakcanary-android:${leakCanaryVersion}"
     releaseCompile "com.squareup.leakcanary:leakcanary-android-no-op:${leakCanaryVersion}"
     testCompile "com.squareup.leakcanary:leakcanary-android-no-op:${leakCanaryVersion}"
+
+    // Mapbox Android Services (Java component)
+    compile('com.mapbox.mapboxsdk:mapbox-java-services:2.0.0-SNAPSHOT@jar') {
+        transitive = true
+    }
 
     // Testing dependencies
     testCompile 'junit:junit:4.12'

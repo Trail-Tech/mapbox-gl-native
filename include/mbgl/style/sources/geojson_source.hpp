@@ -41,7 +41,7 @@ public:
     void setGeoJSON(const GeoJSON&);
     void setGeoJSON(GeoJSONVTPointer data);
 
-    optional<std::string> getURL();
+    optional<std::string> getURL() const;
 
     // Private implementation
 

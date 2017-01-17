@@ -49,6 +49,7 @@ final class MapGestureDetector {
   private boolean dragStarted = false;
   private boolean quickZoom = false;
   private boolean scrollInProgress = false;
+  private boolean scaleGestureOccurred = false;
 
   MapGestureDetector(Context context, Transform transform, Projection projection, UiSettings uiSettings,
                      TrackingSettings trackingSettings, AnnotationManager annotationManager) {
@@ -111,7 +112,8 @@ final class MapGestureDetector {
     // Handle two finger tap
     switch (event.getActionMasked()) {
       case MotionEvent.ACTION_DOWN:
-        // First pointer down
+        // First pointer down, reset scaleGestureOccurred, used to avoid triggering a fling after a scale gesture #7666
+        scaleGestureOccurred = false;
         transform.setGestureInProgress(true);
         break;
 
@@ -294,25 +296,38 @@ final class MapGestureDetector {
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-      if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
+      if ((!trackingSettings.isScrollGestureCurrentlyEnabled()) || scaleGestureOccurred) {
+        // don't allow a fling is scroll is disabled
+        // and ignore when a scale gesture has occurred
+        return false;
+      }
+
+      float screenDensity = uiSettings.getPixelRatio();
+
+      // calculate velocity vector for xy dimensions, independent from screen size
+      double velocityXY = Math.hypot(velocityX / screenDensity, velocityY / screenDensity);
+      if (velocityXY < MapboxConstants.VELOCITY_THRESHOLD_IGNORE_FLING) {
+        // ignore short flings, these can occur when other gestures just have finished executing
         return false;
       }
 
       trackingSettings.resetTrackingModesIfRequired(true, false);
 
-      // Cancel any animation
+      // cancel any animation
       transform.cancelTransitions();
 
-      float screenDensity = uiSettings.getPixelRatio();
-
+      // tilt results in a bigger translation, limiting input for #5281
       double tilt = transform.getTilt();
-      // tilt results in a bigger translation, need to limit input #5281, limitFactor ranges from 2 -> 8
-      double limitFactor = 2 + ((tilt != 0) ? (tilt / 10) : 0);
-      double offsetX = velocityX / limitFactor / screenDensity;
-      double offsetY = velocityY / limitFactor / screenDensity;
+      double tiltFactor = 1 + ((tilt != 0) ? (tilt / 10) : 0); /* 1 -> 7 */
+      double offsetX = velocityX / tiltFactor / screenDensity;
+      double offsetY = velocityY / tiltFactor / screenDensity;
 
+      // calculate animation time based on displacement
+      long animationTime = (long) (velocityXY / 7 / tiltFactor + MapboxConstants.ANIMATION_DURATION_FLING_BASE);
+
+      // update transformation
       transform.setGestureInProgress(true);
-      transform.moveBy(offsetX, offsetY, MapboxConstants.ANIMATION_DURATION_FLING);
+      transform.moveBy(offsetX, offsetY, animationTime);
       transform.setGestureInProgress(false);
 
       if (onFlingListener != null) {
@@ -368,6 +383,7 @@ final class MapGestureDetector {
         return false;
       }
 
+      scaleGestureOccurred = true;
       beginTime = detector.getEventTime();
       MapboxEvent.trackGestureEvent(projection,
         MapboxEvent.GESTURE_PINCH_START, detector.getFocusX(), detector.getFocusY(), transform.getZoom());
