@@ -1307,6 +1307,42 @@ void QMapboxGL::removeSource(const QString& id)
     }
 }
 
+inline std::vector<std::string> toVector(const QVector<QString>&  array) {
+    std::vector<std::string> vector;
+    int len = array.size();
+    vector.reserve(len);
+
+    for (int i = 0; i < len; i++) {
+        vector.push_back(array.at(i).toStdString());
+    }
+
+    return vector;
+}
+
+
+std::vector<QMapbox::MapboxFeature> QMapboxGL::queryRenderedFeatures(const QPointF & point, const QVector<QString>& layerIDs)
+{
+    mbgl::ScreenCoordinate coordinate(point.x(), point.y());
+    mbgl::optional<std::vector<std::string>> layers;
+    if( layerIDs.size() )
+    {
+        layers = toVector(layerIDs);
+    }
+
+    return d_ptr->mapObj->queryRenderedFeatures(coordinate,layers);
+}
+
+// Feature queries - might want to move result to QVector to be more Qt like
+std::vector<QMapbox::MapboxFeature>  queryRenderedFeatures(const QRect& rect, const QVector<QString>& layerIDs)
+{
+    Q_UNUSED(rect);
+    Q_UNUSED(layerIDs);
+    qWarning() << "queryRenderedFeatures unimplemented for rectangle query";
+    
+    return std::vector<QMapbox::MapboxFeature>();
+}
+
+
 /*!
     Adds a custom layer \a id with the initialization function \a initFn, the
     render function \a renderFn and the deinitialization function \a deinitFn with

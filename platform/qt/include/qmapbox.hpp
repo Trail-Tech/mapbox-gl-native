@@ -26,6 +26,7 @@ typedef QPair<LineString, QString> ShapeAnnotation;
 
 using QGeoJSONVT = mapbox::geojsonvt::GeoJSONVT;
 using QGeoJSONVTOptions = mapbox::geojsonvt::Options;
+using MapboxFeature = mapbox::geometry::feature<double>;
 
 // Reflects mbgl::NetworkStatus::Status.
 enum NetworkMode {

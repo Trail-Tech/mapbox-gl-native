@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QPointF>
 #include <QSize>
+#include <QVector>
 #include <memory>
 
 class QImage;
@@ -216,6 +217,10 @@ public:
     void updateSource(const QString &sourceID, const QVariantMap& params);
     void updateSource(const QString &sourceID, std::unique_ptr<QMapbox::QGeoJSONVT> data);
     void removeSource(const QString &sourceID);
+
+    // Feature queries - might want to move result to QVector to be more Qt like
+    std::vector<QMapbox::MapboxFeature> queryRenderedFeatures(const QPointF &, const QVector<QString>& layerIDs = {});
+    std::vector<QMapbox::MapboxFeature> queryRenderedFeatures(const QRect&,    const QVector<QString>& layerIDs = {});
 
     void addImage(const QString &name, const QImage &sprite);
     void removeImage(const QString &name);
