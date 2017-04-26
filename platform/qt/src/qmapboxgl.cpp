@@ -8,6 +8,7 @@
 #include <mbgl/map/camera.hpp>
 #include <mbgl/map/map.hpp>
 #include <mbgl/map/backend_scope.hpp>
+#include <mbgl/map/query.hpp>
 #include <mbgl/math/minmax.hpp>
 #include <mbgl/style/conversion.hpp>
 #include <mbgl/style/conversion/layer.hpp>
@@ -1375,7 +1376,7 @@ inline std::vector<std::string> toVector(const QVector<QString>&  array) {
 
 
 std::vector<QMapbox::MapboxFeature> QMapboxGL::queryRenderedFeatures(const QPointF & point, const QVector<QString>& layerIDs)
-{
+{   mbgl::RenderedQueryOptions options;
     mbgl::ScreenCoordinate coordinate(point.x(), point.y());
     mbgl::optional<std::vector<std::string>> layers;
     if( layerIDs.size() )
@@ -1383,7 +1384,8 @@ std::vector<QMapbox::MapboxFeature> QMapboxGL::queryRenderedFeatures(const QPoin
         layers = toVector(layerIDs);
     }
 
-    return d_ptr->mapObj->queryRenderedFeatures(coordinate,layers);
+    options.layerIDs = layers;
+    return d_ptr->mapObj->queryRenderedFeatures(coordinate,options);
 }
 
 // Feature queries - might want to move result to QVector to be more Qt like
