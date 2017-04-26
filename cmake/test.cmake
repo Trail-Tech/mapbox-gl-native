@@ -1,6 +1,12 @@
-add_executable(mbgl-test
-    ${MBGL_TEST_FILES}
-)
+if (MBGL_TEST_TARGET_TYPE STREQUAL "library")
+    add_library(mbgl-test SHARED
+        ${MBGL_TEST_FILES}
+    )
+else()
+    add_executable(mbgl-test
+        ${MBGL_TEST_FILES}
+    )
+endif()
 
 target_compile_options(mbgl-test
     PRIVATE -fvisibility-inlines-hidden
@@ -9,12 +15,10 @@ target_compile_options(mbgl-test
 set_source_files_properties(test/src/mbgl/test/util.cpp PROPERTIES COMPILE_FLAGS -DNODE_EXECUTABLE="${NodeJS_EXECUTABLE}")
 
 target_include_directories(mbgl-test
-    PRIVATE include
-    PRIVATE src # TODO: eliminate
+    PRIVATE src
     PRIVATE test/include
     PRIVATE test/src
     PRIVATE platform/default
-    PRIVATE ${MBGL_GENERATED}/include
 )
 
 target_link_libraries(mbgl-test
@@ -23,6 +27,7 @@ target_link_libraries(mbgl-test
 
 target_add_mason_package(mbgl-test PRIVATE geometry)
 target_add_mason_package(mbgl-test PRIVATE variant)
+target_add_mason_package(mbgl-test PRIVATE any)
 target_add_mason_package(mbgl-test PRIVATE unique_resource)
 target_add_mason_package(mbgl-test PRIVATE rapidjson)
 target_add_mason_package(mbgl-test PRIVATE gtest)

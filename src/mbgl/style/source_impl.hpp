@@ -7,6 +7,7 @@
 #include <mbgl/tile/tile.hpp>
 #include <mbgl/tile/tile_cache.hpp>
 #include <mbgl/style/types.hpp>
+#include <mbgl/style/query.hpp>
 
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/mat4.hpp>
@@ -24,6 +25,7 @@ class Painter;
 class FileSource;
 class TransformState;
 class RenderTile;
+class RenderedQueryOptions;
 
 namespace algorithm {
 class ClipIDGenerator;
@@ -32,7 +34,6 @@ class ClipIDGenerator;
 namespace style {
 
 class UpdateParameters;
-class QueryParameters;
 class SourceObserver;
 
 class Source::Impl : public TileObserver, private util::noncopyable {
@@ -47,12 +48,11 @@ public:
     // trigger re-placement of existing complete tiles.
     void updateTiles(const UpdateParameters&);
 
-    // Called when icons or glyphs are loaded. Triggers further processing of tiles which
-    // were waiting on such dependencies.
-    void updateSymbolDependentTiles();
-
     // Removes all tiles (by putting them into the cache).
     void removeTiles();
+
+    // Remove all tiles and clear the cache.
+    void invalidateTiles();
 
     // Request that all loaded tiles re-run the layout operation on the existing source
     // data with fresh style information.
@@ -66,7 +66,11 @@ public:
     std::map<UnwrappedTileID, RenderTile>& getRenderTiles();
 
     std::unordered_map<std::string, std::vector<Feature>>
-    queryRenderedFeatures(const QueryParameters&) const;
+    queryRenderedFeatures(const ScreenLineString& geometry,
+                          const TransformState& transformState,
+                          const RenderedQueryOptions& options) const;
+
+    std::vector<Feature> querySourceFeatures(const SourceQueryOptions&);
 
     void setCacheSize(size_t);
     void onLowMemory();
@@ -78,6 +82,7 @@ public:
     const std::string id;
 
     virtual optional<std::string> getAttribution() const { return {}; };
+    virtual optional<Range<uint8_t>> getZoomRange() const = 0;
 
     bool loaded = false;
 
@@ -85,23 +90,24 @@ public:
     // be initialized to true so that Style::isLoaded() does not produce false positives if
     // called before Style::recalculate().
     bool enabled = true;
+    
+    // Detaches from the style
+    void detach();
 
 protected:
-    void invalidateTiles();
-    void removeStaleTiles(const std::set<OverscaledTileID>&);
-
     Source& base;
     SourceObserver* observer = nullptr;
     std::map<OverscaledTileID, std::unique_ptr<Tile>> tiles;
     TileCache cache;
 
 private:
+    void removeStaleTiles(const std::set<OverscaledTileID>&);
+
     // TileObserver implementation.
     void onTileChanged(Tile&) override;
     void onTileError(Tile&, std::exception_ptr) override;
 
     virtual uint16_t getTileSize() const = 0;
-    virtual Range<uint8_t> getZoomRange() = 0;
     virtual std::unique_ptr<Tile> createTile(const OverscaledTileID&, const UpdateParameters&) = 0;
 
     std::map<UnwrappedTileID, RenderTile> renderTiles;

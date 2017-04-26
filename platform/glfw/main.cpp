@@ -153,6 +153,18 @@ int main(int argc, char *argv[]) {
         mbgl::Log::Info(mbgl::Event::Setup, "Changed style to: %s", newStyle.name);
     });
 
+    view->setPauseResumeCallback([&fileSource] () {
+        static bool isPaused = false;
+
+        if (isPaused) {
+            fileSource.resume();
+        } else {
+            fileSource.pause();
+        }
+
+        isPaused = !isPaused;
+    });
+
     // Load style
     if (style.empty()) {
         const char *url = getenv("MAPBOX_STYLE_URL");
@@ -172,8 +184,8 @@ int main(int argc, char *argv[]) {
 
     // Save settings
     mbgl::LatLng latLng = map.getLatLng();
-    settings.latitude = latLng.latitude;
-    settings.longitude = latLng.longitude;
+    settings.latitude = latLng.latitude();
+    settings.longitude = latLng.longitude();
     settings.zoom = map.getZoom();
     settings.bearing = map.getBearing();
     settings.pitch = map.getPitch();

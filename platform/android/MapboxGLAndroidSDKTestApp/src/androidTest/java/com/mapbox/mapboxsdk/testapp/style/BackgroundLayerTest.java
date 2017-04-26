@@ -1,25 +1,27 @@
-package com.mapbox.mapboxsdk.testapp.style;
 // This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make android-style-code`.
 
+package com.mapbox.mapboxsdk.testapp.style;
+
 import android.graphics.Color;
-import android.support.test.espresso.Espresso;
-import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
 
-import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.style.functions.CameraFunction;
+import com.mapbox.mapboxsdk.style.functions.stops.ExponentialStops;
+import com.mapbox.mapboxsdk.style.functions.stops.IntervalStops;
 import com.mapbox.mapboxsdk.style.layers.BackgroundLayer;
-import com.mapbox.mapboxsdk.testapp.R;
-import com.mapbox.mapboxsdk.testapp.activity.style.RuntimeStyleTestActivity;
-import com.mapbox.mapboxsdk.testapp.utils.OnMapReadyIdlingResource;
+import com.mapbox.mapboxsdk.style.layers.TransitionOptions;
+import com.mapbox.mapboxsdk.testapp.activity.BaseActivityTest;
+import com.mapbox.mapboxsdk.testapp.activity.espresso.EspressoTestActivity;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import timber.log.Timber;
 
+import static com.mapbox.mapboxsdk.style.functions.Function.zoom;
+import static com.mapbox.mapboxsdk.style.functions.stops.Stop.stop;
+import static com.mapbox.mapboxsdk.style.functions.stops.Stops.exponential;
+import static com.mapbox.mapboxsdk.style.functions.stops.Stops.interval;
 import static com.mapbox.mapboxsdk.style.layers.Property.NONE;
 import static com.mapbox.mapboxsdk.style.layers.Property.VISIBLE;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.backgroundColor;
@@ -33,109 +35,200 @@ import static org.junit.Assert.assertNotNull;
  * Basic smoke tests for BackgroundLayer
  */
 @RunWith(AndroidJUnit4.class)
-public class BackgroundLayerTest extends BaseStyleTest {
-
-  @Rule
-  public final ActivityTestRule<RuntimeStyleTestActivity> rule = new ActivityTestRule<>(RuntimeStyleTestActivity.class);
+public class BackgroundLayerTest extends BaseActivityTest {
 
   private BackgroundLayer layer;
 
-  private OnMapReadyIdlingResource idlingResource;
+  @Override
+  protected Class getActivityClass() {
+    return EspressoTestActivity.class;
+  }
 
-  private MapboxMap mapboxMap;
-
-  @Before
-  public void setup() {
-    idlingResource = new OnMapReadyIdlingResource(rule.getActivity());
-    Espresso.registerIdlingResources(idlingResource);
+  private void setupLayer() {
+    Timber.i("Retrieving layer");
+    layer = mapboxMap.getLayerAs("background");
   }
 
   @Test
   public void testSetVisibility() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
-    Timber.i("Retrieving layer");
-    layer = mapboxMap.getLayerAs("background");
-    Timber.i("visibility");
+    validateTestSetup();
+    setupLayer();
+    Timber.i("Visibility");
     assertNotNull(layer);
 
-    //Get initial
+    // Get initial
     assertEquals(layer.getVisibility().getValue(), VISIBLE);
 
-    //Set
+    // Set
     layer.setProperties(visibility(NONE));
     assertEquals(layer.getVisibility().getValue(), NONE);
   }
 
   @Test
-  public void testBackgroundColor() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testBackgroundColorTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-colorTransitionOptions");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setBackgroundColorTransition(options);
+    assertEquals(layer.getBackgroundColorTransition(), options);
+  }
 
-    Timber.i("Retrieving layer");
-    layer = mapboxMap.getLayerAs("background");
+  @Test
+  public void testBackgroundColorAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("background-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(backgroundColor("rgba(0, 0, 0, 1)"));
     assertEquals((String) layer.getBackgroundColor().getValue(), (String) "rgba(0, 0, 0, 1)");
   }
 
   @Test
-  public void testBackgroundColorAsInt() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
-    Timber.i("Retrieving layer");
-    layer = mapboxMap.getLayerAs("background");
+  public void testBackgroundColorAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("background-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set
+    layer.setProperties(
+      backgroundColor(
+        zoom(
+          exponential(
+            stop(2, backgroundColor("rgba(0, 0, 0, 1)"))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getBackgroundColor());
+    assertNotNull(layer.getBackgroundColor().getFunction());
+    assertEquals(CameraFunction.class, layer.getBackgroundColor().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getBackgroundColor().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getBackgroundColor().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getBackgroundColor().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testBackgroundColorAsIntConstant() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-color");
+    assertNotNull(layer);
+
+    // Set and Get
     layer.setProperties(backgroundColor(Color.RED));
     assertEquals(layer.getBackgroundColorAsInt(), Color.RED);
   }
 
   @Test
-  public void testBackgroundPattern() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testBackgroundPatternTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-patternTransitionOptions");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setBackgroundPatternTransition(options);
+    assertEquals(layer.getBackgroundPatternTransition(), options);
+  }
 
-    Timber.i("Retrieving layer");
-    layer = mapboxMap.getLayerAs("background");
+  @Test
+  public void testBackgroundPatternAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("background-pattern");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(backgroundPattern("pedestrian-polygon"));
     assertEquals((String) layer.getBackgroundPattern().getValue(), (String) "pedestrian-polygon");
   }
 
   @Test
-  public void testBackgroundOpacity() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testBackgroundPatternAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-pattern");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set
+    layer.setProperties(
+      backgroundPattern(
+        zoom(
+          interval(
+            stop(2, backgroundPattern("pedestrian-polygon"))
+          )
+        )
+      )
+    );
 
-    Timber.i("Retrieving layer");
-    layer = mapboxMap.getLayerAs("background");
+    // Verify
+    assertNotNull(layer.getBackgroundPattern());
+    assertNotNull(layer.getBackgroundPattern().getFunction());
+    assertEquals(CameraFunction.class, layer.getBackgroundPattern().getFunction().getClass());
+    assertEquals(IntervalStops.class, layer.getBackgroundPattern().getFunction().getStops().getClass());
+    assertEquals(1, ((IntervalStops) layer.getBackgroundPattern().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testBackgroundOpacityTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-opacityTransitionOptions");
+    assertNotNull(layer);
+
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setBackgroundOpacityTransition(options);
+    assertEquals(layer.getBackgroundOpacityTransition(), options);
+  }
+
+  @Test
+  public void testBackgroundOpacityAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("background-opacity");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(backgroundOpacity(0.3f));
     assertEquals((Float) layer.getBackgroundOpacity().getValue(), (Float) 0.3f);
   }
 
+  @Test
+  public void testBackgroundOpacityAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("background-opacity");
+    assertNotNull(layer);
 
-  @After
-  public void unregisterIntentServiceIdlingResource() {
-    Espresso.unregisterIdlingResources(idlingResource);
+    // Set
+    layer.setProperties(
+      backgroundOpacity(
+        zoom(
+          exponential(
+            stop(2, backgroundOpacity(0.3f))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getBackgroundOpacity());
+    assertNotNull(layer.getBackgroundOpacity().getFunction());
+    assertEquals(CameraFunction.class, layer.getBackgroundOpacity().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getBackgroundOpacity().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getBackgroundOpacity().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getBackgroundOpacity().getFunction().getStops()).size());
   }
+
 }

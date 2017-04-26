@@ -1,11 +1,14 @@
-package com.mapbox.mapboxsdk.style.layers;
 // This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make android-style-code`.
+
+package com.mapbox.mapboxsdk.style.layers;
 
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.UiThread;
 
 import static com.mapbox.mapboxsdk.utils.ColorUtils.rgbaToColor;
+
+import com.mapbox.mapboxsdk.style.layers.TransitionOptions;
 
 /**
  * The background color or pattern of the map.
@@ -41,7 +44,7 @@ public class BackgroundLayer extends Layer {
    * @param properties the var-args properties
    * @return This
    */
-  public BackgroundLayer withProperties(@NonNull Property<?>... properties) {
+  public BackgroundLayer withProperties(@NonNull PropertyValue<?>... properties) {
     setProperties(properties);
     return this;
   }
@@ -55,7 +58,7 @@ public class BackgroundLayer extends Layer {
    */
   @SuppressWarnings("unchecked")
   public PropertyValue<String> getBackgroundColor() {
-    return (PropertyValue<String>) new PropertyValue(nativeGetBackgroundColor());
+    return (PropertyValue<String>) new PropertyValue("background-color", nativeGetBackgroundColor());
   }
 
   /**
@@ -74,6 +77,23 @@ public class BackgroundLayer extends Layer {
     }
   }
 
+  /**
+   * Get the BackgroundColor property transition options
+   *
+   * @return transition options for String
+   */
+  public TransitionOptions getBackgroundColorTransition() {
+    return nativeGetBackgroundColorTransition();
+  }
+
+  /**
+   * Set the BackgroundColor property transition options
+   *
+   * @param options transition options for String
+   */
+  public void setBackgroundColorTransition(TransitionOptions options) {
+    nativeSetBackgroundColorTransition(options.getDuration(), options.getDelay());
+  }
 
   /**
    * Get the BackgroundPattern property
@@ -82,7 +102,25 @@ public class BackgroundLayer extends Layer {
    */
   @SuppressWarnings("unchecked")
   public PropertyValue<String> getBackgroundPattern() {
-    return (PropertyValue<String>) new PropertyValue(nativeGetBackgroundPattern());
+    return (PropertyValue<String>) new PropertyValue("background-pattern", nativeGetBackgroundPattern());
+  }
+
+  /**
+   * Get the BackgroundPattern property transition options
+   *
+   * @return transition options for String
+   */
+  public TransitionOptions getBackgroundPatternTransition() {
+    return nativeGetBackgroundPatternTransition();
+  }
+
+  /**
+   * Set the BackgroundPattern property transition options
+   *
+   * @param options transition options for String
+   */
+  public void setBackgroundPatternTransition(TransitionOptions options) {
+    nativeSetBackgroundPatternTransition(options.getDuration(), options.getDelay());
   }
 
   /**
@@ -92,15 +130,44 @@ public class BackgroundLayer extends Layer {
    */
   @SuppressWarnings("unchecked")
   public PropertyValue<Float> getBackgroundOpacity() {
-    return (PropertyValue<Float>) new PropertyValue(nativeGetBackgroundOpacity());
+    return (PropertyValue<Float>) new PropertyValue("background-opacity", nativeGetBackgroundOpacity());
+  }
+
+  /**
+   * Get the BackgroundOpacity property transition options
+   *
+   * @return transition options for Float
+   */
+  public TransitionOptions getBackgroundOpacityTransition() {
+    return nativeGetBackgroundOpacityTransition();
+  }
+
+  /**
+   * Set the BackgroundOpacity property transition options
+   *
+   * @param options transition options for Float
+   */
+  public void setBackgroundOpacityTransition(TransitionOptions options) {
+    nativeSetBackgroundOpacityTransition(options.getDuration(), options.getDelay());
   }
 
   private native Object nativeGetBackgroundColor();
 
+  private native TransitionOptions nativeGetBackgroundColorTransition();
+
+  private native void nativeSetBackgroundColorTransition(long duration, long delay);
+
   private native Object nativeGetBackgroundPattern();
+
+  private native TransitionOptions nativeGetBackgroundPatternTransition();
+
+  private native void nativeSetBackgroundPatternTransition(long duration, long delay);
 
   private native Object nativeGetBackgroundOpacity();
 
+  private native TransitionOptions nativeGetBackgroundOpacityTransition();
+
+  private native void nativeSetBackgroundOpacityTransition(long duration, long delay);
 
   @Override
   protected native void finalize() throws Throwable;

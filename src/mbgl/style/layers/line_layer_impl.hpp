@@ -13,26 +13,10 @@ public:
     std::unique_ptr<Layer> cloneRef(const std::string& id) const override;
     void stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const override;
 
-    void cascade(const CascadeParameters&) override;
-    bool evaluate(const PropertyEvaluationParameters&) override;
-
-    std::unique_ptr<Bucket> createBucket(BucketParameters&, const GeometryTileLayer&) const override;
-
-    float getQueryRadius() const override;
-    bool queryIntersectsGeometry(
-            const GeometryCoordinates& queryGeometry,
-            const GeometryCollection& geometry,
-            const float bearing,
-            const float pixelsToTileUnits) const override;
+    std::unique_ptr<RenderLayer> createRenderLayer() const override;
 
     LineLayoutProperties layout;
-    LinePaintProperties paint;
-
-    // Special case
-    float dashLineWidth = 1;
-
-private:
-    float getLineWidth() const;
+    LinePaintProperties::Cascading cascading;
 };
 
 } // namespace style

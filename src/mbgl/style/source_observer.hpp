@@ -17,10 +17,10 @@ public:
     virtual ~SourceObserver() = default;
 
     virtual void onSourceLoaded(Source&) {}
-    virtual void onSourceAttributionChanged(Source&, const std::string&) {}
+    virtual void onSourceChanged(Source&) {}
     virtual void onSourceError(Source&, std::exception_ptr) {}
 
-    //Source description needs to be reloaded
+    // Source description needs to be reloaded
     virtual void onSourceDescriptionChanged(Source&) {}
 
     virtual void onTileChanged(Source&, const OverscaledTileID&) {}

@@ -12,16 +12,14 @@
 /// the given point.
 CGRect MGLExtendRect(CGRect rect, CGPoint point);
 
-NS_INLINE mbgl::LatLng MGLLatLngFromLocationCoordinate2D(CLLocationCoordinate2D coordinate) {
-    return mbgl::LatLng(coordinate.latitude, coordinate.longitude);
-}
+mbgl::LatLng MGLLatLngFromLocationCoordinate2D(CLLocationCoordinate2D coordinate);
 
 NS_INLINE mbgl::Point<double> MGLPointFromLocationCoordinate2D(CLLocationCoordinate2D coordinate) {
     return mbgl::Point<double>(coordinate.longitude, coordinate.latitude);
 }
 
 NS_INLINE CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng) {
-    return CLLocationCoordinate2DMake(latLng.latitude, latLng.longitude);
+    return CLLocationCoordinate2DMake(latLng.latitude(), latLng.longitude());
 }
 
 NS_INLINE MGLCoordinateBounds MGLCoordinateBoundsFromLatLngBounds(mbgl::LatLngBounds latLngBounds) {
@@ -45,7 +43,7 @@ NS_INLINE mbgl::EdgeInsets MGLEdgeInsetsFromNSEdgeInsets(NSEdgeInsets insets) {
 #endif
 
 /** Converts a map zoom level to a camera altitude.
-    
+
     @param zoomLevel The zoom level to convert.
     @param pitch The camera pitch, measured in degrees.
     @param latitude The latitude of the point at the center of the viewport.
@@ -54,7 +52,7 @@ NS_INLINE mbgl::EdgeInsets MGLEdgeInsetsFromNSEdgeInsets(NSEdgeInsets insets) {
 CLLocationDistance MGLAltitudeForZoomLevel(double zoomLevel, CGFloat pitch, CLLocationDegrees latitude, CGSize size);
 
 /** Converts a camera altitude to a map zoom level.
-    
+
     @param altitude The altitude to convert, measured in meters.
     @param pitch The camera pitch, measured in degrees.
     @param latitude The latitude of the point at the center of the viewport.

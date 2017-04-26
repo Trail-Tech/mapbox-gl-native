@@ -4,7 +4,7 @@
 #include <TargetConditionals.h>
 #endif
 
-#if __ANDROID__
+#if ANDROID
 #define TEST_READ_ONLY 0
 #define TEST_HAS_SERVER 0
 #elif TARGET_OS_IOS
@@ -21,7 +21,7 @@
 #define TEST_IS_SIMULATOR 0
 #endif
 
-#if !TEST_IS_SIMULATOR
+#if !TEST_IS_SIMULATOR && !CI_BUILD
 #define TEST_REQUIRES_ACCURATE_TIMING(name) name
 #else
 #define TEST_REQUIRES_ACCURATE_TIMING(name) DISABLED_ ## name

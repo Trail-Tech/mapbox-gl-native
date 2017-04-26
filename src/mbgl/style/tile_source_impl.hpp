@@ -33,12 +33,11 @@ public:
     const variant<std::string, Tileset>& getURLOrTileset() const {
         return urlOrTileset;
     }
-    
+
     optional<std::string> getAttribution() const override;
+    optional<Range<uint8_t>> getZoomRange() const final;
 
 protected:
-    Range<uint8_t> getZoomRange() final;
-
     const variant<std::string, Tileset> urlOrTileset;
     const uint16_t tileSize;
 

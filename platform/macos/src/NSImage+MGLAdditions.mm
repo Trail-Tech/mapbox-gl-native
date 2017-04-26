@@ -1,19 +1,36 @@
 #import "NSImage+MGLAdditions.h"
 
+#include <mbgl/util/image+MGLAdditions.hpp>
+
 @implementation NSImage (MGLAdditions)
 
-- (nullable instancetype)initWithMGLSpriteImage:(const mbgl::SpriteImage *)spriteImage {
-    std::string png = encodePNG(spriteImage->image);
-    NSData *data = [[NSData alloc] initWithBytes:png.data() length:png.size()];
-    NSBitmapImageRep *rep = [NSBitmapImageRep imageRepWithData:data];
-    if (self = [self initWithSize:NSMakeSize(spriteImage->getWidth(), spriteImage->getHeight())]) {
+- (nullable instancetype)initWithMGLPremultipliedImage:(mbgl::PremultipliedImage&&)src {
+    CGImageRef image = CGImageFromMGLPremultipliedImage(std::move(src));
+    if (!image) {
+        return nil;
+    }
+
+    self = [self initWithCGImage:image size:NSZeroSize];
+    CGImageRelease(image);
+    return self;
+}
+
+- (nullable instancetype)initWithMGLStyleImage:(const mbgl::style::Image *)styleImage {
+    CGImageRef image = CGImageFromMGLPremultipliedImage(styleImage->image.clone());
+    if (!image) {
+        return nil;
+    }
+
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:image];
+    CGImageRelease(image);
+    if (self = [self initWithSize:NSMakeSize(styleImage->getWidth(), styleImage->getHeight())]) {
         [self addRepresentation:rep];
-        [self setTemplate:spriteImage->sdf];
+        [self setTemplate:styleImage->sdf];
     }
     return self;
 }
 
-- (std::unique_ptr<mbgl::SpriteImage>)mgl_spriteImage {
+- (std::unique_ptr<mbgl::style::Image>)mgl_styleImage {
     // Create a bitmap image representation from the image, respecting backing
     // scale factor and any resizing done on the image at runtime.
     // http://www.cocoabuilder.com/archive/cocoa/82430-nsimage-getting-raw-bitmap-data.html#82431
@@ -23,7 +40,7 @@
 
     mbgl::PremultipliedImage cPremultipliedImage({ static_cast<uint32_t>(rep.pixelsWide), static_cast<uint32_t>(rep.pixelsHigh) });
     std::copy(rep.bitmapData, rep.bitmapData + cPremultipliedImage.bytes(), cPremultipliedImage.data.get());
-    return std::make_unique<mbgl::SpriteImage>(std::move(cPremultipliedImage),
+    return std::make_unique<mbgl::style::Image>(std::move(cPremultipliedImage),
                                                (float)(rep.pixelsWide / self.size.width),
                                                [self isTemplate]);
 }

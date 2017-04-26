@@ -2,6 +2,9 @@
 
 #include "source.hpp"
 #include <mbgl/style/sources/geojson_source.hpp>
+#include "../../geojson/geometry.hpp"
+#include "../../geojson/feature.hpp"
+#include "../../geojson/feature_collection.hpp"
 #include <jni/jni.hpp>
 
 namespace mbgl {
@@ -22,9 +25,18 @@ public:
 
     ~GeoJSONSource();
 
-    void setGeoJSON(jni::JNIEnv&, jni::Object<>);
+    void setGeoJSONString(jni::JNIEnv&, jni::String);
+
+    void setFeatureCollection(jni::JNIEnv&, jni::Object<geojson::FeatureCollection>);
+
+    void setFeature(jni::JNIEnv&, jni::Object<geojson::Feature>);
+
+    void setGeometry(jni::JNIEnv&, jni::Object<geojson::Geometry>);
 
     void setURL(jni::JNIEnv&, jni::String);
+
+    jni::Array<jni::Object<geojson::Feature>> querySourceFeatures(jni::JNIEnv&,
+                                                                  jni::Array<jni::Object<>> jfilter);
 
     jni::jobject* createJavaPeer(jni::JNIEnv&);
 

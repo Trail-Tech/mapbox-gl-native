@@ -29,11 +29,12 @@ public:
         return util::tileSize;
     }
 
+    optional<Range<uint8_t>> getZoomRange() const final;
+
 private:
     void _setGeoJSON(const GeoJSON&);
     void _setGeoJSON(GeoJSONVTPointer);
 
-    Range<uint8_t> getZoomRange() final;
     std::unique_ptr<Tile> createTile(const OverscaledTileID&, const UpdateParameters&) final;
 
     GeoJSONOptions options;

@@ -51,7 +51,7 @@ static NSString * const MGLTestAnnotationReuseIdentifer = @"MGLTestAnnotationReu
 - (void)setUp
 {
     [super setUp];
-    _mapView = [[MGLMapView alloc] initWithFrame:CGRectZero];
+    _mapView = [[MGLMapView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
     _mapView.delegate = self;
 }
 
@@ -74,7 +74,7 @@ static NSString * const MGLTestAnnotationReuseIdentifer = @"MGLTestAnnotationReu
     XCTAssertTrue(testCalloutView.didCallDismissCalloutAnimated, @"callout view was not dismissed");
 
     [_mapView removeAnnotation:_annotationView.annotation];
-    
+
     XCTAssert(_mapView.annotations.count == 0, @"number of annotations should be 0");
     XCTAssertNil(_annotationView.annotation, @"annotation property should be nil");
 }
@@ -82,14 +82,14 @@ static NSString * const MGLTestAnnotationReuseIdentifer = @"MGLTestAnnotationReu
 - (MGLAnnotationView *)mapView:(MGLMapView *)mapView viewForAnnotation:(id<MGLAnnotation>)annotation
 {
     MGLAnnotationView *annotationView = [mapView dequeueReusableAnnotationViewWithIdentifier:MGLTestAnnotationReuseIdentifer];
-    
+
     if (!annotationView)
     {
         annotationView = [[MGLAnnotationView alloc] initWithReuseIdentifier:MGLTestAnnotationReuseIdentifer];
     }
-    
+
     _annotationView = annotationView;
-    
+
     return annotationView;
 }
 

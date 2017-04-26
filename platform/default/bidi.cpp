@@ -1,8 +1,10 @@
-#include <memory>
-
 #include <mbgl/text/bidi.hpp>
+#include <mbgl/util/traits.hpp>
+
 #include <unicode/ubidi.h>
 #include <unicode/ushape.h>
+
+#include <memory>
 
 namespace mbgl {
 
@@ -18,7 +20,7 @@ public:
     UBiDi* bidiText = nullptr;
     UBiDi* bidiLine = nullptr;
 };
-    
+
 BiDi::BiDi() : impl(std::make_unique<BiDiImpl>()) {}
 BiDi::~BiDi() = default;
 
@@ -28,7 +30,7 @@ std::u16string applyArabicShaping(const std::u16string& input) {
     UErrorCode errorCode = U_ZERO_ERROR;
 
     const int32_t outputLength =
-        u_shapeArabic(input.c_str(), static_cast<int32_t>(input.size()), NULL, 0,
+        u_shapeArabic(mbgl::utf16char_cast<const UChar*>(input.c_str()), static_cast<int32_t>(input.size()), NULL, 0,
                       (U_SHAPE_LETTERS_SHAPE & U_SHAPE_LETTERS_MASK) |
                           (U_SHAPE_TEXT_DIRECTION_LOGICAL & U_SHAPE_TEXT_DIRECTION_MASK),
                       &errorCode);
@@ -36,8 +38,9 @@ std::u16string applyArabicShaping(const std::u16string& input) {
     // Pre-flighting will always set U_BUFFER_OVERFLOW_ERROR
     errorCode = U_ZERO_ERROR;
 
-    auto outputText = std::make_unique<UChar[]>(outputLength);
-    u_shapeArabic(input.c_str(), static_cast<int32_t>(input.size()), outputText.get(), outputLength,
+    std::u16string outputText(outputLength, 0);
+
+    u_shapeArabic(mbgl::utf16char_cast<const UChar*>(input.c_str()), static_cast<int32_t>(input.size()), mbgl::utf16char_cast<UChar*>(&outputText[0]), outputLength,
                   (U_SHAPE_LETTERS_SHAPE & U_SHAPE_LETTERS_MASK) |
                       (U_SHAPE_TEXT_DIRECTION_LOGICAL & U_SHAPE_TEXT_DIRECTION_MASK),
                   &errorCode);
@@ -46,7 +49,7 @@ std::u16string applyArabicShaping(const std::u16string& input) {
     if (U_FAILURE(errorCode))
         return input;
 
-    return std::u16string(outputText.get(), outputLength);
+    return outputText;
 }
 
 void BiDi::mergeParagraphLineBreaks(std::set<size_t>& lineBreakPoints) {
@@ -73,6 +76,8 @@ std::vector<std::u16string> BiDi::applyLineBreaking(std::set<std::size_t> lineBr
     mergeParagraphLineBreaks(lineBreakPoints);
 
     std::vector<std::u16string> transformedLines;
+    transformedLines.reserve(lineBreakPoints.size());
+
     std::size_t start = 0;
     for (std::size_t lineBreakPoint : lineBreakPoints) {
         transformedLines.push_back(getLine(start, lineBreakPoint));
@@ -86,7 +91,7 @@ std::vector<std::u16string> BiDi::processText(const std::u16string& input,
                                               std::set<std::size_t> lineBreakPoints) {
     UErrorCode errorCode = U_ZERO_ERROR;
 
-    ubidi_setPara(impl->bidiText, input.c_str(), static_cast<int32_t>(input.size()),
+    ubidi_setPara(impl->bidiText, mbgl::utf16char_cast<const UChar*>(input.c_str()), static_cast<int32_t>(input.size()),
                   UBIDI_DEFAULT_LTR, NULL, &errorCode);
 
     if (U_FAILURE(errorCode)) {
@@ -108,12 +113,12 @@ std::u16string BiDi::getLine(std::size_t start, std::size_t end) {
     //  Setting UBIDI_INSERT_LRM_FOR_NUMERIC would require
     //  ubidi_getLength(pBiDi)+2*ubidi_countRuns(pBiDi)
     const int32_t outputLength = ubidi_getProcessedLength(impl->bidiLine);
-    auto outputText = std::make_unique<UChar[]>(outputLength);
+    std::u16string outputText(outputLength, 0);
 
     // UBIDI_DO_MIRRORING: Apply unicode mirroring of characters like parentheses
     // UBIDI_REMOVE_BIDI_CONTROLS: Now that all the lines are set, remove control characters so that
     // they don't show up on screen (some fonts have glyphs representing them)
-    ubidi_writeReordered(impl->bidiLine, outputText.get(), outputLength,
+    ubidi_writeReordered(impl->bidiLine, &outputText[0], outputLength,
                          UBIDI_DO_MIRRORING | UBIDI_REMOVE_BIDI_CONTROLS, &errorCode);
 
     if (U_FAILURE(errorCode)) {
@@ -121,7 +126,7 @@ std::u16string BiDi::getLine(std::size_t start, std::size_t end) {
                                  u_errorName(errorCode));
     }
 
-    return std::u16string(outputText.get(), outputLength);
+    return outputText;
 }
 
 } // end namespace mbgl

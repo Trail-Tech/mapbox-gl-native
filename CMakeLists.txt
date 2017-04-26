@@ -3,34 +3,12 @@ project(mbgl LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 14)
 
 include(cmake/mbgl.cmake)
-
-if(NOT EXISTS ".mason/mason.cmake")
-   execute_process(
-        COMMAND git submodule update --init .mason
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif()
-
-if(NOT EXISTS "mapbox-gl-js/package.json")
-   execute_process(
-        COMMAND git submodule update --init mapbox-gl-js
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-   # Symlink mapbox-gl-js/node_modules so that the modules that are
-   # about to be installed get cached between CI runs.
-   execute_process(
-        COMMAND ln -s ../node_modules node_modules
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/mapbox-gl-js)
-   execute_process(
-        COMMAND npm install
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/mapbox-gl-js)
-endif()
-
-include(.mason/mason.cmake)
+include(cmake/mason.cmake)
 
 option(WITH_CXX11ABI "Use cxx11abi mason packages" OFF)
 option(WITH_COVERAGE "Enable coverage reports" OFF)
 option(WITH_OSMESA   "Use OSMesa headless backend" OFF)
 option(WITH_EGL      "Use EGL backend" OFF)
-option(IS_CI_BUILD   "Continuous integration build" OFF)
 
 if(WITH_CXX11ABI)
     set(MASON_CXXABI_SUFFIX -cxx11abi)
@@ -40,33 +18,41 @@ if(WITH_OSMESA AND WITH_EGL)
     message(FATAL_ERROR "WITH_OSMESA and WITH_EGL are mutually exclusive.")
 endif()
 
-if(WITH_OSMESA)
-    # Default mesa mason binary is OSMesa.
-    set(MASON_MESA_SUFFIX "")
-elseif(WITH_EGL)
+if(WITH_EGL)
     add_definitions(-DMBGL_USE_GLES2=1)
-    set(MASON_MESA_SUFFIX "-egl")
-else()
-    set(MASON_MESA_SUFFIX "-glx")
 endif()
 
-if(IS_CI_BUILD)
+if($ENV{CI})
     add_compile_options(-DCI_BUILD=1)
 endif()
 
+if(EXISTS ${CMAKE_SOURCE_DIR}/.git/HEAD)
+    exec_program(
+        "git"
+        ${CMAKE_SOURCE_DIR}
+        ARGS "rev-parse --short=8 HEAD"
+        OUTPUT_VARIABLE MBGL_VERSION_REV )
+else()
+    set(MBGL_VERSION_REV 00000000)
+endif()
+
+set_source_files_properties(src/mbgl/util/version.cpp PROPERTIES COMPILE_DEFINITIONS MBGL_VERSION_REV="${MBGL_VERSION_REV}")
+
 mason_use(geometry VERSION 0.9.0 HEADER_ONLY)
 mason_use(variant VERSION 1.1.4 HEADER_ONLY)
-mason_use(unique_resource VERSION dev HEADER_ONLY)
+mason_use(any VERSION 8fef1e9 HEADER_ONLY)
+mason_use(unique_resource VERSION cba309e HEADER_ONLY)
 mason_use(rapidjson VERSION 1.1.0 HEADER_ONLY)
 mason_use(boost VERSION 1.62.0 HEADER_ONLY)
-mason_use(geojsonvt VERSION 6.1.3 HEADER_ONLY)
-mason_use(supercluster VERSION 0.2.0 HEADER_ONLY)
-mason_use(kdbush VERSION 0.1.1 HEADER_ONLY)
+mason_use(geojsonvt VERSION 6.2.0 HEADER_ONLY)
+mason_use(supercluster VERSION 0.2.0-1 HEADER_ONLY)
+mason_use(kdbush VERSION 0.1.1-1 HEADER_ONLY)
 mason_use(earcut VERSION 0.12.1 HEADER_ONLY)
 mason_use(protozero VERSION 1.4.2 HEADER_ONLY)
 mason_use(pixelmatch VERSION 0.10.0 HEADER_ONLY)
 mason_use(geojson VERSION 0.4.0 HEADER_ONLY)
 mason_use(polylabel VERSION 1.0.2 HEADER_ONLY)
+mason_use(wagyu VERSION 0.4.1 HEADER_ONLY)
 
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 
@@ -82,6 +68,7 @@ if(APPLE)
     # -Wno-error=unused-command-line-argument is required due to https://llvm.org/bugs/show_bug.cgi?id=7798
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-command-line-argument")
 endif()
+set(CMAKE_CXX_FLAGS_RELEASE "-Os -DNDEBUG")
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     # https://svn.boost.org/trac/boost/ticket/9240
@@ -92,10 +79,11 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/platform/${MBGL_PLATFORM}/config.cmake)
     message(ERROR "Can't find config.cmake file for platform ${MBGL_PLATFORM}")
 endif()
 
+include(cmake/loop-uv.cmake)
+
 include(platform/${MBGL_PLATFORM}/config.cmake)
 
 include(cmake/core-files.cmake)
-include(cmake/shaders.cmake)
 include(cmake/core.cmake)
 
 if(COMMAND mbgl_platform_test)
@@ -122,4 +110,10 @@ endif()
 
 if(COMMAND mbgl_platform_node)
     include(cmake/node.cmake)
+endif()
+
+if(CMAKE_GENERATOR STREQUAL "Xcode")
+    write_xcconfig_target_properties(
+        mbgl-core
+    )
 endif()

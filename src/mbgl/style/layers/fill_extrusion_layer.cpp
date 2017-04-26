@@ -8,14 +8,14 @@ namespace mbgl {
 namespace style {
 
 FillExtrusionLayer::FillExtrusionLayer(const std::string& layerID, const std::string& sourceID)
-    : Layer(Type::FillExtrusion, std::make_unique<Impl>())
+    : Layer(LayerType::FillExtrusion, std::make_unique<Impl>())
     , impl(static_cast<Impl*>(baseImpl.get())) {
     impl->id = layerID;
     impl->source = sourceID;
 }
 
 FillExtrusionLayer::FillExtrusionLayer(const Impl& other)
-    : Layer(Type::FillExtrusion, std::make_unique<Impl>(other))
+    : Layer(LayerType::FillExtrusion, std::make_unique<Impl>(other))
     , impl(static_cast<Impl*>(baseImpl.get())) {
 }
 
@@ -28,7 +28,7 @@ std::unique_ptr<Layer> FillExtrusionLayer::Impl::clone() const {
 std::unique_ptr<Layer> FillExtrusionLayer::Impl::cloneRef(const std::string& id_) const {
     auto result = std::make_unique<FillExtrusionLayer>(*this);
     result->impl->id = id_;
-    result->impl->paint = FillExtrusionPaintProperties();
+    result->impl->cascading = FillExtrusionPaintProperties::Cascading();
     return std::move(result);
 }
 
@@ -70,29 +70,49 @@ PropertyValue<float> FillExtrusionLayer::getDefaultFillExtrusionOpacity() {
 }
 
 PropertyValue<float> FillExtrusionLayer::getFillExtrusionOpacity(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionOpacity>(klass);
+    return impl->cascading.template get<FillExtrusionOpacity>().get(klass);
 }
 
 void FillExtrusionLayer::setFillExtrusionOpacity(PropertyValue<float> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionOpacity(klass))
         return;
-    impl->paint.set<FillExtrusionOpacity>(value, klass);
+    impl->cascading.template get<FillExtrusionOpacity>().set(value, klass);
     impl->observer->onLayerPaintPropertyChanged(*this);
 }
 
-PropertyValue<Color> FillExtrusionLayer::getDefaultFillExtrusionColor() {
+void FillExtrusionLayer::setFillExtrusionOpacityTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionOpacity>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionOpacityTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionOpacity>().getTransition(klass);
+}
+
+DataDrivenPropertyValue<Color> FillExtrusionLayer::getDefaultFillExtrusionColor() {
     return { Color::black() };
 }
 
-PropertyValue<Color> FillExtrusionLayer::getFillExtrusionColor(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionColor>(klass);
+DataDrivenPropertyValue<Color> FillExtrusionLayer::getFillExtrusionColor(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionColor>().get(klass);
 }
 
-void FillExtrusionLayer::setFillExtrusionColor(PropertyValue<Color> value, const optional<std::string>& klass) {
+void FillExtrusionLayer::setFillExtrusionColor(DataDrivenPropertyValue<Color> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionColor(klass))
         return;
-    impl->paint.set<FillExtrusionColor>(value, klass);
-    impl->observer->onLayerPaintPropertyChanged(*this);
+    impl->cascading.template get<FillExtrusionColor>().set(value, klass);
+    if (value.isDataDriven()) {
+        impl->observer->onLayerDataDrivenPaintPropertyChanged(*this);
+    } else {
+        impl->observer->onLayerPaintPropertyChanged(*this);
+    }
+}
+
+void FillExtrusionLayer::setFillExtrusionColorTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionColor>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionColorTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionColor>().getTransition(klass);
 }
 
 PropertyValue<std::array<float, 2>> FillExtrusionLayer::getDefaultFillExtrusionTranslate() {
@@ -100,14 +120,22 @@ PropertyValue<std::array<float, 2>> FillExtrusionLayer::getDefaultFillExtrusionT
 }
 
 PropertyValue<std::array<float, 2>> FillExtrusionLayer::getFillExtrusionTranslate(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionTranslate>(klass);
+    return impl->cascading.template get<FillExtrusionTranslate>().get(klass);
 }
 
 void FillExtrusionLayer::setFillExtrusionTranslate(PropertyValue<std::array<float, 2>> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionTranslate(klass))
         return;
-    impl->paint.set<FillExtrusionTranslate>(value, klass);
+    impl->cascading.template get<FillExtrusionTranslate>().set(value, klass);
     impl->observer->onLayerPaintPropertyChanged(*this);
+}
+
+void FillExtrusionLayer::setFillExtrusionTranslateTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionTranslate>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionTranslateTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionTranslate>().getTransition(klass);
 }
 
 PropertyValue<TranslateAnchorType> FillExtrusionLayer::getDefaultFillExtrusionTranslateAnchor() {
@@ -115,14 +143,22 @@ PropertyValue<TranslateAnchorType> FillExtrusionLayer::getDefaultFillExtrusionTr
 }
 
 PropertyValue<TranslateAnchorType> FillExtrusionLayer::getFillExtrusionTranslateAnchor(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionTranslateAnchor>(klass);
+    return impl->cascading.template get<FillExtrusionTranslateAnchor>().get(klass);
 }
 
 void FillExtrusionLayer::setFillExtrusionTranslateAnchor(PropertyValue<TranslateAnchorType> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionTranslateAnchor(klass))
         return;
-    impl->paint.set<FillExtrusionTranslateAnchor>(value, klass);
+    impl->cascading.template get<FillExtrusionTranslateAnchor>().set(value, klass);
     impl->observer->onLayerPaintPropertyChanged(*this);
+}
+
+void FillExtrusionLayer::setFillExtrusionTranslateAnchorTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionTranslateAnchor>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionTranslateAnchorTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionTranslateAnchor>().getTransition(klass);
 }
 
 PropertyValue<std::string> FillExtrusionLayer::getDefaultFillExtrusionPattern() {
@@ -130,44 +166,76 @@ PropertyValue<std::string> FillExtrusionLayer::getDefaultFillExtrusionPattern() 
 }
 
 PropertyValue<std::string> FillExtrusionLayer::getFillExtrusionPattern(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionPattern>(klass);
+    return impl->cascading.template get<FillExtrusionPattern>().get(klass);
 }
 
 void FillExtrusionLayer::setFillExtrusionPattern(PropertyValue<std::string> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionPattern(klass))
         return;
-    impl->paint.set<FillExtrusionPattern>(value, klass);
+    impl->cascading.template get<FillExtrusionPattern>().set(value, klass);
     impl->observer->onLayerPaintPropertyChanged(*this);
 }
 
-PropertyValue<float> FillExtrusionLayer::getDefaultFillExtrusionHeight() {
+void FillExtrusionLayer::setFillExtrusionPatternTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionPattern>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionPatternTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionPattern>().getTransition(klass);
+}
+
+DataDrivenPropertyValue<float> FillExtrusionLayer::getDefaultFillExtrusionHeight() {
     return { 0 };
 }
 
-PropertyValue<float> FillExtrusionLayer::getFillExtrusionHeight(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionHeight>(klass);
+DataDrivenPropertyValue<float> FillExtrusionLayer::getFillExtrusionHeight(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionHeight>().get(klass);
 }
 
-void FillExtrusionLayer::setFillExtrusionHeight(PropertyValue<float> value, const optional<std::string>& klass) {
+void FillExtrusionLayer::setFillExtrusionHeight(DataDrivenPropertyValue<float> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionHeight(klass))
         return;
-    impl->paint.set<FillExtrusionHeight>(value, klass);
-    impl->observer->onLayerPaintPropertyChanged(*this);
+    impl->cascading.template get<FillExtrusionHeight>().set(value, klass);
+    if (value.isDataDriven()) {
+        impl->observer->onLayerDataDrivenPaintPropertyChanged(*this);
+    } else {
+        impl->observer->onLayerPaintPropertyChanged(*this);
+    }
 }
 
-PropertyValue<float> FillExtrusionLayer::getDefaultFillExtrusionBase() {
+void FillExtrusionLayer::setFillExtrusionHeightTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionHeight>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionHeightTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionHeight>().getTransition(klass);
+}
+
+DataDrivenPropertyValue<float> FillExtrusionLayer::getDefaultFillExtrusionBase() {
     return { 0 };
 }
 
-PropertyValue<float> FillExtrusionLayer::getFillExtrusionBase(const optional<std::string>& klass) const {
-    return impl->paint.get<FillExtrusionBase>(klass);
+DataDrivenPropertyValue<float> FillExtrusionLayer::getFillExtrusionBase(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionBase>().get(klass);
 }
 
-void FillExtrusionLayer::setFillExtrusionBase(PropertyValue<float> value, const optional<std::string>& klass) {
+void FillExtrusionLayer::setFillExtrusionBase(DataDrivenPropertyValue<float> value, const optional<std::string>& klass) {
     if (value == getFillExtrusionBase(klass))
         return;
-    impl->paint.set<FillExtrusionBase>(value, klass);
-    impl->observer->onLayerPaintPropertyChanged(*this);
+    impl->cascading.template get<FillExtrusionBase>().set(value, klass);
+    if (value.isDataDriven()) {
+        impl->observer->onLayerDataDrivenPaintPropertyChanged(*this);
+    } else {
+        impl->observer->onLayerPaintPropertyChanged(*this);
+    }
+}
+
+void FillExtrusionLayer::setFillExtrusionBaseTransition(const TransitionOptions& value, const optional<std::string>& klass) {
+    impl->cascading.template get<FillExtrusionBase>().setTransition(value, klass);
+}
+
+TransitionOptions FillExtrusionLayer::getFillExtrusionBaseTransition(const optional<std::string>& klass) const {
+    return impl->cascading.template get<FillExtrusionBase>().getTransition(klass);
 }
 
 } // namespace style

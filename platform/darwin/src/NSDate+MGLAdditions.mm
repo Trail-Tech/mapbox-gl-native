@@ -1,10 +1,11 @@
 #import "NSDate+MGLAdditions.h"
 
-@implementation NSDate (MGLAdditions)
-
-mbgl::Duration MGLDurationInSeconds(NSTimeInterval duration)
+mbgl::Duration MGLDurationFromTimeInterval(NSTimeInterval duration)
 {
     return std::chrono::duration_cast<mbgl::Duration>(std::chrono::duration<NSTimeInterval>(duration));
 }
 
-@end
+NSTimeInterval MGLTimeIntervalFromDuration(mbgl::Duration duration)
+{
+    return std::chrono::duration<NSTimeInterval, std::ratio<1>>(duration).count();
+}

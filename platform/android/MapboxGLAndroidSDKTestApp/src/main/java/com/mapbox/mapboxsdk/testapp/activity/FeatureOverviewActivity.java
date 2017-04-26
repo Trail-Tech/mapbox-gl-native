@@ -8,20 +8,16 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.StringRes;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
-
-import timber.log.Timber;
-
 import android.view.View;
 
 import com.mapbox.mapboxsdk.testapp.R;
@@ -35,6 +31,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import timber.log.Timber;
+
+/**
+ * Activity shown when application is started
+ * <p>
+ * This activity  will generate data for RecyclerView based on the AndroidManifest entries.
+ * It uses tags as category and description to order the different entries.
+ * </p>
+ */
 public class FeatureOverviewActivity extends AppCompatActivity {
 
   private static final String KEY_STATE_FEATURES = "featureList";
@@ -46,16 +51,7 @@ public class FeatureOverviewActivity extends AppCompatActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-
-    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-    toolbar.setTitle(getString(R.string.app_name));
-    setSupportActionBar(toolbar);
-
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setElevation(getResources().getDimension(R.dimen.toolbar_shadow));
-    }
+    setContentView(R.layout.activity_feature_overview);
 
     recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
     recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -137,7 +133,7 @@ public class FeatureOverviewActivity extends AppCompatActivity {
 
   @Override
   public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-    if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+    if (!isRuntimePermissionsRequired() || isPermissionAccepted(grantResults)) {
       startFeature(features.get(requestCode));
     } else {
       Snackbar.make(
@@ -145,6 +141,14 @@ public class FeatureOverviewActivity extends AppCompatActivity {
         "Can't open without accepting the location permission.",
         Snackbar.LENGTH_SHORT).show();
     }
+  }
+
+  private boolean isRuntimePermissionsRequired() {
+    return android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
+  }
+
+  private boolean isPermissionAccepted(@NonNull int[] grantResults) {
+    return grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
   }
 
   @Override
@@ -218,8 +222,6 @@ public class FeatureOverviewActivity extends AppCompatActivity {
       List<String> requiresPermissionActvities = new ArrayList<String>() {
         {
           add(resources.getString(R.string.activity_double_map));
-          add(getString(R.string.activity_location_picker));
-          add(getString(R.string.activity_car_driving));
         }
       };
 

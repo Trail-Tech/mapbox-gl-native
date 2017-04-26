@@ -3,6 +3,7 @@
 #pragma once
 
 #include "layer.hpp"
+#include "../transition_options.hpp"
 #include <mbgl/style/layers/background_layer.hpp>
 #include <jni/jni.hpp>
 
@@ -22,15 +23,23 @@ public:
 
     BackgroundLayer(mbgl::Map&, mbgl::style::BackgroundLayer&);
 
+    BackgroundLayer(mbgl::Map&, std::unique_ptr<mbgl::style::BackgroundLayer>);
+
     ~BackgroundLayer();
 
-    // Property getters
+    // Properties
+
     jni::Object<jni::ObjectTag> getBackgroundColor(jni::JNIEnv&);
+    void setBackgroundColorTransition(jni::JNIEnv&, jlong duration, jlong delay);
+    jni::Object<TransitionOptions> getBackgroundColorTransition(jni::JNIEnv&);
 
     jni::Object<jni::ObjectTag> getBackgroundPattern(jni::JNIEnv&);
+    void setBackgroundPatternTransition(jni::JNIEnv&, jlong duration, jlong delay);
+    jni::Object<TransitionOptions> getBackgroundPatternTransition(jni::JNIEnv&);
 
     jni::Object<jni::ObjectTag> getBackgroundOpacity(jni::JNIEnv&);
-
+    void setBackgroundOpacityTransition(jni::JNIEnv&, jlong duration, jlong delay);
+    jni::Object<TransitionOptions> getBackgroundOpacityTransition(jni::JNIEnv&);
     jni::jobject* createJavaPeer(jni::JNIEnv&);
 
 }; // class BackgroundLayer

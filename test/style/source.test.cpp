@@ -13,14 +13,19 @@
 #include <mbgl/util/tileset.hpp>
 #include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/util/logging.hpp>
+#include <mbgl/util/optional.hpp>
+#include <mbgl/util/range.hpp>
 
 #include <mbgl/map/transform.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/update_parameters.hpp>
 #include <mbgl/style/layers/line_layer.hpp>
 #include <mbgl/annotation/annotation_manager.hpp>
+#include <mbgl/annotation/annotation_source.hpp>
 
 #include <mapbox/geojsonvt.hpp>
+
+#include <cstdint>
 
 using namespace mbgl;
 
@@ -33,7 +38,7 @@ public:
     TransformState transformState;
     ThreadPool threadPool { 1 };
     AnnotationManager annotationManager { 1.0 };
-    style::Style style { fileSource, 1.0 };
+    style::Style style { threadPool, fileSource, 1.0 };
 
     style::UpdateParameters updateParameters {
         1.0,
@@ -64,6 +69,32 @@ public:
         loop.stop();
     }
 };
+
+TEST(Source, DefaultZoomRange) {
+    VectorSource vectorSource("vectorSource", "url");
+    EXPECT_FALSE(vectorSource.getZoomRange());
+    vectorSource.baseImpl->loaded = true;
+    EXPECT_EQ(vectorSource.getZoomRange()->min, 0u);
+    EXPECT_EQ(vectorSource.getZoomRange()->max, 22u);
+
+    GeoJSONSource geojsonSource("source");
+    EXPECT_FALSE(geojsonSource.getZoomRange());
+    geojsonSource.baseImpl->loaded = true;
+    EXPECT_EQ(geojsonSource.getZoomRange()->min, 0u);
+    EXPECT_EQ(geojsonSource.getZoomRange()->max, 18u);
+
+    Tileset tileset;
+    RasterSource rasterSource("source", tileset, 512);
+    EXPECT_FALSE(rasterSource.getZoomRange());
+    rasterSource.baseImpl->loaded = true;
+    EXPECT_EQ(rasterSource.getZoomRange()->min, 0u);
+    EXPECT_EQ(rasterSource.getZoomRange()->max, 22u);
+    EXPECT_EQ(*rasterSource.getZoomRange(), tileset.zoomRange);
+
+    AnnotationSource annotationSource;
+    EXPECT_EQ(annotationSource.getZoomRange()->min, 0u);
+    EXPECT_EQ(annotationSource.getZoomRange()->max, 22u);
+}
 
 TEST(Source, LoadingFail) {
     SourceTest test;
@@ -364,8 +395,8 @@ TEST(Source, RasterTileAttribution) {
         return response;
     };
 
-    test.observer.sourceAttributionChanged = [&] (Source&, std::string attribution) {
-        EXPECT_EQ(mapboxOSM, attribution);
+    test.observer.sourceChanged = [&] (Source& source) {
+        EXPECT_EQ(mapboxOSM, source.getAttribution());
         EXPECT_FALSE(mapboxOSM.find("©️ OpenStreetMap") == std::string::npos);
         test.end();
     };
@@ -393,7 +424,7 @@ TEST(Source, GeoJSonSourceUrlUpdate) {
     };
 
     test.observer.sourceDescriptionChanged = [&] (Source&) {
-        //Should be called (test will hang if it doesn't)
+        // Should be called (test will hang if it doesn't)
         test.end();
     };
 
@@ -404,12 +435,12 @@ TEST(Source, GeoJSonSourceUrlUpdate) {
     GeoJSONSource source("source");
     source.baseImpl->setObserver(&test.observer);
 
-    //Load initial, so the source state will be loaded=true
+    // Load initial, so the source state will be loaded=true
     source.baseImpl->loadDescription(test.fileSource);
 
-    //Schedule an update
+    // Schedule an update
     test.loop.invoke([&] () {
-        //Update the url
+        // Update the url
         source.setURL(std::string("http://source-url.ext"));
     });
 

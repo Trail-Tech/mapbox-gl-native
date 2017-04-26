@@ -1,39 +1,55 @@
 #include <mbgl/renderer/circle_bucket.hpp>
+#include <mbgl/renderer/bucket_parameters.hpp>
 #include <mbgl/renderer/painter.hpp>
-#include <mbgl/gl/context.hpp>
-
 #include <mbgl/programs/circle_program.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
+#include <mbgl/style/layers/circle_layer_impl.hpp>
+#include <mbgl/renderer/render_circle_layer.hpp>
 #include <mbgl/util/constants.hpp>
+#include <mbgl/util/math.hpp>
 
 namespace mbgl {
 
 using namespace style;
 
-CircleBucket::CircleBucket(MapMode mode_) : mode(mode_) {
+CircleBucket::CircleBucket(const BucketParameters& parameters, const std::vector<const RenderLayer*>& layers)
+    : mode(parameters.mode) {
+    for (const auto& layer : layers) {
+        paintPropertyBinders.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(layer->getID()),
+            std::forward_as_tuple(
+                layer->as<RenderCircleLayer>()->evaluated,
+                parameters.tileID.overscaledZ));
+    }
 }
 
 void CircleBucket::upload(gl::Context& context) {
     vertexBuffer = context.createVertexBuffer(std::move(vertices));
     indexBuffer = context.createIndexBuffer(std::move(triangles));
+
+    for (auto& pair : paintPropertyBinders) {
+        pair.second.upload(context);
+    }
+
     uploaded = true;
 }
 
 void CircleBucket::render(Painter& painter,
-                        PaintParameters& parameters, 
-                        const Layer& layer,
+                        PaintParameters& parameters,
+                        const RenderLayer& layer,
                         const RenderTile& tile) {
-    painter.renderCircle(parameters, *this, *layer.as<CircleLayer>(), tile);
+    painter.renderCircle(parameters, *this, *layer.as<RenderCircleLayer>(), tile);
 }
 
 bool CircleBucket::hasData() const {
     return !segments.empty();
 }
 
-void CircleBucket::addGeometry(const GeometryCollection& geometryCollection) {
+void CircleBucket::addFeature(const GeometryTileFeature& feature,
+                              const GeometryCollection& geometry) {
     constexpr const uint16_t vertexLength = 4;
 
-    for (auto& circle : geometryCollection) {
+    for (auto& circle : geometry) {
         for(auto& point : circle) {
             auto x = point.x;
             auto y = point.y;
@@ -76,6 +92,32 @@ void CircleBucket::addGeometry(const GeometryCollection& geometryCollection) {
             segment.indexLength += 6;
         }
     }
+
+    for (auto& pair : paintPropertyBinders) {
+        pair.second.populateVertexVectors(feature, vertices.vertexSize());
+    }
+}
+
+template <class Property>
+static float get(const RenderCircleLayer& layer, const std::map<std::string, CircleProgram::PaintPropertyBinders>& paintPropertyBinders) {
+    auto it = paintPropertyBinders.find(layer.getID());
+    if (it == paintPropertyBinders.end() || !it->second.statistics<Property>().max()) {
+        return layer.evaluated.get<Property>().constantOr(Property::defaultValue());
+    } else {
+        return *it->second.statistics<Property>().max();
+    }
+}
+
+float CircleBucket::getQueryRadius(const RenderLayer& layer) const {
+    if (!layer.is<RenderCircleLayer>()) {
+        return 0;
+    }
+
+    auto circleLayer = layer.as<RenderCircleLayer>();
+
+    float radius = get<CircleRadius>(*circleLayer, paintPropertyBinders);
+    auto translate = circleLayer->evaluated.get<CircleTranslate>();
+    return radius + util::length(translate[0], translate[1]);
 }
 
 } // namespace mbgl

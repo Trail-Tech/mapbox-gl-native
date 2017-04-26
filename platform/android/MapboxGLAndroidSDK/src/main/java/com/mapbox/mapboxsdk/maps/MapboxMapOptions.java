@@ -14,6 +14,7 @@ import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.res.ResourcesCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
 
@@ -47,6 +48,7 @@ public class MapboxMapOptions implements Parcelable {
   private boolean fadeCompassFacingNorth = true;
   private int compassGravity = Gravity.TOP | Gravity.END;
   private int[] compassMargins;
+  private Drawable compassImage;
 
   private boolean logoEnabled = true;
   private int logoGravity = Gravity.BOTTOM | Gravity.START;
@@ -66,6 +68,7 @@ public class MapboxMapOptions implements Parcelable {
   private boolean tiltGesturesEnabled = true;
   private boolean zoomGesturesEnabled = true;
   private boolean zoomControlsEnabled = false;
+  private boolean doubleTapGesturesEnabled = true;
 
   private boolean myLocationEnabled;
   private Drawable myLocationForegroundDrawable;
@@ -99,6 +102,11 @@ public class MapboxMapOptions implements Parcelable {
     compassMargins = in.createIntArray();
     fadeCompassFacingNorth = in.readByte() != 0;
 
+    Bitmap compassBitmap = in.readParcelable(getClass().getClassLoader());
+    if (compassBitmap != null) {
+      compassImage = new BitmapDrawable(compassBitmap);
+    }
+
     logoEnabled = in.readByte() != 0;
     logoGravity = in.readInt();
     logoMargins = in.createIntArray();
@@ -116,6 +124,7 @@ public class MapboxMapOptions implements Parcelable {
     tiltGesturesEnabled = in.readByte() != 0;
     zoomControlsEnabled = in.readByte() != 0;
     zoomGesturesEnabled = in.readByte() != 0;
+    doubleTapGesturesEnabled = in.readByte() != 0;
 
     myLocationEnabled = in.readByte() != 0;
 
@@ -145,7 +154,7 @@ public class MapboxMapOptions implements Parcelable {
     textureMode = in.readByte() != 0;
   }
 
-  public static Bitmap getBitmapFromDrawable(Drawable drawable) {
+  static Bitmap getBitmapFromDrawable(Drawable drawable) {
     if (drawable instanceof BitmapDrawable) {
       return ((BitmapDrawable) drawable).getBitmap();
     } else {
@@ -184,6 +193,8 @@ public class MapboxMapOptions implements Parcelable {
         typedArray.getBoolean(R.styleable.mapbox_MapView_mapbox_uiTiltGestures, true));
       mapboxMapOptions.zoomControlsEnabled(
         typedArray.getBoolean(R.styleable.mapbox_MapView_mapbox_uiZoomControls, false));
+      mapboxMapOptions.doubleTapGesturesEnabled(
+        typedArray.getBoolean(R.styleable.mapbox_MapView_mapbox_uiDoubleTapGestures, true));
 
       mapboxMapOptions.maxZoomPreference(typedArray.getFloat(R.styleable.mapbox_MapView_mapbox_cameraZoomMax,
         MapboxConstants.MAXIMUM_ZOOM));
@@ -204,6 +215,12 @@ public class MapboxMapOptions implements Parcelable {
           DIMENSION_TEN_DP * pxlRatio))});
       mapboxMapOptions.compassFadesWhenFacingNorth(typedArray.getBoolean(
         R.styleable.mapbox_MapView_mapbox_uiCompassFadeFacingNorth, true));
+      Drawable compassDrawable = typedArray.getDrawable(
+        R.styleable.mapbox_MapView_mapbox_uiCompassDrawable);
+      if (compassDrawable == null) {
+        compassDrawable = ResourcesCompat.getDrawable(context.getResources(), R.drawable.mapbox_compass_icon, null);
+      }
+      mapboxMapOptions.compassImage(compassDrawable);
 
       mapboxMapOptions.logoEnabled(typedArray.getBoolean(R.styleable.mapbox_MapView_mapbox_uiLogo, true));
       mapboxMapOptions.logoGravity(typedArray.getInt(R.styleable.mapbox_MapView_mapbox_uiLogoGravity,
@@ -397,6 +414,20 @@ public class MapboxMapOptions implements Parcelable {
   }
 
   /**
+   * Specifies the image of the CompassView.
+   * <p>
+   * By default this value is R.drawable.mapbox_compass_icon.
+   * </p>
+   *
+   * @param compass the drawable to show as image compass
+   * @return This
+   */
+  public MapboxMapOptions compassImage(Drawable compass) {
+    this.compassImage = compass;
+    return this;
+  }
+
+  /**
    * Specifies the visibility state of a logo for a map view.
    *
    * @param enabled True and logo is shown
@@ -525,6 +556,17 @@ public class MapboxMapOptions implements Parcelable {
    */
   public MapboxMapOptions zoomGesturesEnabled(boolean enabled) {
     zoomGesturesEnabled = enabled;
+    return this;
+  }
+
+  /**
+   * Specifies if the double tap gesture is enabled for a map view.
+   *
+   * @param enabled True and gesture will be enabled
+   * @return This
+   */
+  public MapboxMapOptions doubleTapGesturesEnabled(boolean enabled) {
+    doubleTapGesturesEnabled = enabled;
     return this;
   }
 
@@ -728,6 +770,15 @@ public class MapboxMapOptions implements Parcelable {
   }
 
   /**
+   * Get the current configured CompassView image.
+   *
+   * @return the drawable used as compass image
+   */
+  public Drawable getCompassImage() {
+    return compassImage;
+  }
+
+  /**
    * Get the current configured visibility state for mapbox_compass_icon for a map view.
    *
    * @return Visibility state of the mapbox_compass_icon
@@ -806,6 +857,15 @@ public class MapboxMapOptions implements Parcelable {
    */
   public boolean getZoomGesturesEnabled() {
     return zoomGesturesEnabled;
+  }
+
+  /**
+   * Get the current configured double tap gesture state for a map view.
+   *
+   * @return True indicates gesture is enabled
+   */
+  public boolean getDoubleTapGesturesEnabled() {
+    return doubleTapGesturesEnabled;
   }
 
   /**
@@ -969,6 +1029,8 @@ public class MapboxMapOptions implements Parcelable {
     dest.writeInt(compassGravity);
     dest.writeIntArray(compassMargins);
     dest.writeByte((byte) (fadeCompassFacingNorth ? 1 : 0));
+    dest.writeParcelable(compassImage != null
+      ? getBitmapFromDrawable(compassImage) : null, flags);
 
     dest.writeByte((byte) (logoEnabled ? 1 : 0));
     dest.writeInt(logoGravity);
@@ -987,6 +1049,7 @@ public class MapboxMapOptions implements Parcelable {
     dest.writeByte((byte) (tiltGesturesEnabled ? 1 : 0));
     dest.writeByte((byte) (zoomControlsEnabled ? 1 : 0));
     dest.writeByte((byte) (zoomGesturesEnabled ? 1 : 0));
+    dest.writeByte((byte) (doubleTapGesturesEnabled ? 1 : 0));
 
     dest.writeByte((byte) (myLocationEnabled ? 1 : 0));
 
@@ -1027,6 +1090,11 @@ public class MapboxMapOptions implements Parcelable {
     if (fadeCompassFacingNorth != options.fadeCompassFacingNorth) {
       return false;
     }
+    if (compassImage != null
+      ? !compassImage.equals(options.compassImage)
+      : options.compassImage != null) {
+      return false;
+    }
     if (compassGravity != options.compassGravity) {
       return false;
     }
@@ -1064,6 +1132,9 @@ public class MapboxMapOptions implements Parcelable {
       return false;
     }
     if (zoomControlsEnabled != options.zoomControlsEnabled) {
+      return false;
+    }
+    if (doubleTapGesturesEnabled != options.doubleTapGesturesEnabled) {
       return false;
     }
     if (myLocationEnabled != options.myLocationEnabled) {
@@ -1129,6 +1200,7 @@ public class MapboxMapOptions implements Parcelable {
     result = 31 * result + (compassEnabled ? 1 : 0);
     result = 31 * result + (fadeCompassFacingNorth ? 1 : 0);
     result = 31 * result + compassGravity;
+    result = 31 * result + (compassImage != null ? compassImage.hashCode() : 0);
     result = 31 * result + Arrays.hashCode(compassMargins);
     result = 31 * result + (logoEnabled ? 1 : 0);
     result = 31 * result + logoGravity;
@@ -1146,6 +1218,7 @@ public class MapboxMapOptions implements Parcelable {
     result = 31 * result + (tiltGesturesEnabled ? 1 : 0);
     result = 31 * result + (zoomGesturesEnabled ? 1 : 0);
     result = 31 * result + (zoomControlsEnabled ? 1 : 0);
+    result = 31 * result + (doubleTapGesturesEnabled ? 1 : 0);
     result = 31 * result + (myLocationEnabled ? 1 : 0);
     result = 31 * result + (myLocationForegroundDrawable != null ? myLocationForegroundDrawable.hashCode() : 0);
     result = 31 * result + (myLocationForegroundBearingDrawable != null

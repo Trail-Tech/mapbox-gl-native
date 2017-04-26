@@ -2,21 +2,25 @@ package com.mapbox.mapboxsdk.maps;
 
 import android.content.Context;
 import android.graphics.PointF;
+import android.location.Location;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.ScaleGestureDetectorCompat;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.ViewConfiguration;
-import android.widget.ZoomButtonsController;
 
 import com.almeros.android.multitouch.gesturedetectors.RotateGestureDetector;
 import com.almeros.android.multitouch.gesturedetectors.ShoveGestureDetector;
 import com.almeros.android.multitouch.gesturedetectors.TwoFingerGestureDetector;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
-import com.mapbox.mapboxsdk.telemetry.MapboxEvent;
-import com.mapbox.mapboxsdk.utils.MathUtils;
+import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.services.android.telemetry.MapboxEvent;
+import com.mapbox.services.android.telemetry.MapboxTelemetry;
+import com.mapbox.services.android.telemetry.utils.MathUtils;
+import com.mapbox.services.android.telemetry.utils.TelemetryUtils;
 
 /**
  * Manages gestures events on a MapView.
@@ -88,6 +92,32 @@ final class MapGestureDetector {
     this.focalPoint = focalPoint;
   }
 
+  /**
+   * Get the current active gesture focal point.
+   * <p>
+   * This could be either the user provided focal point in {@link UiSettings#setFocalPoint(PointF)} or the focal point
+   * defined as a result of {@link TrackingSettings#setMyLocationEnabled(boolean)}.
+   * </p>
+   *
+   * @return the current active gesture focal point.
+   */
+  @Nullable
+  PointF getFocalPoint() {
+    return focalPoint;
+  }
+
+  /**
+   * Given coordinates from a gesture, use the current projection to translate it into
+   * a Location object.
+   *
+   * @param x coordinate
+   * @param y coordinate
+   * @return location
+   */
+  private Location getLocationFromGesture(float x, float y) {
+    LatLng latLng = projection.fromScreenLocation(new PointF(x, y));
+    return TelemetryUtils.buildLocation(latLng.getLongitude(), latLng.getLatitude());
+  }
 
   /**
    * Called when user touches the screen, all positions are absolute.
@@ -123,8 +153,9 @@ final class MapGestureDetector {
           && uiSettings.isZoomGesturesEnabled();
         if (twoTap) {
           // Confirmed 2nd Finger Down
-          MapboxEvent.trackGestureEvent(projection,
-            MapboxEvent.GESTURE_TWO_FINGER_SINGLETAP, event.getX(), event.getY(), transform.getZoom());
+          MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+            getLocationFromGesture(event.getX(), event.getY()),
+            MapboxEvent.GESTURE_TWO_FINGER_SINGLETAP, transform));
         }
         break;
 
@@ -142,10 +173,10 @@ final class MapGestureDetector {
 
         if (twoTap && isTap && !inProgress) {
           if (focalPoint != null) {
-            transform.zoom(false, focalPoint.x, focalPoint.y);
+            transform.zoom(false, focalPoint);
           } else {
             PointF focalPoint = TwoFingerGestureDetector.determineFocalPoint(event);
-            transform.zoom(false, focalPoint.x, focalPoint.y);
+            transform.zoom(false, focalPoint);
           }
           twoTap = false;
           return true;
@@ -153,7 +184,8 @@ final class MapGestureDetector {
 
         // Scroll / Pan Has Stopped
         if (scrollInProgress) {
-          MapboxEvent.trackGestureDragEndEvent(projection, event.getX(), event.getY(), transform.getZoom());
+          MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapDragEndEvent(
+            getLocationFromGesture(event.getX(), event.getY()), transform));
           scrollInProgress = false;
         }
 
@@ -181,7 +213,7 @@ final class MapGestureDetector {
    */
   boolean onGenericMotionEvent(MotionEvent event) {
     // Mouse events
-    //if (event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) { // this is not available before API 18
+    // if (event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) { // this is not available before API 18
     if ((event.getSource() & InputDevice.SOURCE_CLASS_POINTER) == InputDevice.SOURCE_CLASS_POINTER) {
       // Choose the action
       switch (event.getActionMasked()) {
@@ -198,7 +230,7 @@ final class MapGestureDetector {
           float scrollDist = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
 
           // Scale the map by the appropriate power of two factor
-          transform.zoomBy(Math.pow(2.0, scrollDist), event.getX(), event.getY());
+          transform.zoomBy(scrollDist, event.getX(), event.getY());
 
           return true;
 
@@ -225,7 +257,7 @@ final class MapGestureDetector {
 
     @Override
     public boolean onDoubleTapEvent(MotionEvent e) {
-      if (!uiSettings.isZoomGesturesEnabled()) {
+      if (!uiSettings.isZoomGesturesEnabled() || !uiSettings.isDoubleTapGesturesEnabled()) {
         return false;
       }
 
@@ -244,15 +276,17 @@ final class MapGestureDetector {
           // Single finger double tap
           if (focalPoint != null) {
             // User provided focal point
-            transform.zoom(true, focalPoint.x, focalPoint.y);
+            transform.zoom(true, focalPoint);
           } else {
             // Zoom in on gesture
-            transform.zoom(true, e.getX(), e.getY());
+            transform.zoom(true, new PointF(e.getX(), e.getY()));
           }
           break;
       }
 
-      MapboxEvent.trackGestureEvent(projection, MapboxEvent.GESTURE_DOUBLETAP, e.getX(), e.getY(), transform.getZoom());
+      MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+        getLocationFromGesture(e.getX(), e.getY()),
+        MapboxEvent.GESTURE_DOUBLETAP, transform));
 
       return true;
     }
@@ -281,8 +315,10 @@ final class MapGestureDetector {
         }
       }
 
-      MapboxEvent.trackGestureEvent(projection,
-        MapboxEvent.GESTURE_SINGLETAP, motionEvent.getX(), motionEvent.getY(), transform.getZoom());
+      MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+        getLocationFromGesture(motionEvent.getX(), motionEvent.getY()),
+        MapboxEvent.GESTURE_SINGLETAP, transform));
+
       return true;
     }
 
@@ -333,9 +369,6 @@ final class MapGestureDetector {
       if (onFlingListener != null) {
         onFlingListener.onFling();
       }
-
-      MapboxEvent.trackGestureEvent(projection,
-        MapboxEvent.GESTURE_PAN_START, e1.getX(), e1.getY(), transform.getZoom());
       return true;
     }
 
@@ -344,6 +377,9 @@ final class MapGestureDetector {
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
       if (!scrollInProgress) {
         scrollInProgress = true;
+        MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+          getLocationFromGesture(e1.getX(), e1.getY()),
+          MapboxEvent.GESTURE_PAN_START, transform));
       }
       if (!trackingSettings.isScrollGestureCurrentlyEnabled()) {
         return false;
@@ -385,8 +421,9 @@ final class MapGestureDetector {
 
       scaleGestureOccurred = true;
       beginTime = detector.getEventTime();
-      MapboxEvent.trackGestureEvent(projection,
-        MapboxEvent.GESTURE_PINCH_START, detector.getFocusX(), detector.getFocusY(), transform.getZoom());
+      MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+        getLocationFromGesture(detector.getFocusX(), detector.getFocusY()),
+        MapboxEvent.GESTURE_PINCH_START, transform));
       return true;
     }
 
@@ -442,17 +479,17 @@ final class MapGestureDetector {
       // Scale the map
       if (focalPoint != null) {
         // arround user provided focal point
-        transform.zoomBy(detector.getScaleFactor(), focalPoint.x, focalPoint.y);
+        transform.zoomBy(Math.log(detector.getScaleFactor()) / Math.log(2), focalPoint.x, focalPoint.y);
       } else if (quickZoom) {
         // clamp scale factors we feed to core #7514
         float scaleFactor = MathUtils.clamp(detector.getScaleFactor(),
           MapboxConstants.MINIMUM_SCALE_FACTOR_CLAMP,
           MapboxConstants.MAXIMUM_SCALE_FACTOR_CLAMP);
         // around center map
-        transform.zoomBy(scaleFactor, uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
+        transform.zoomBy(Math.log(scaleFactor) / Math.log(2), uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
       } else {
         // around gesture
-        transform.zoomBy(detector.getScaleFactor(), detector.getFocusX(), detector.getFocusY());
+        transform.zoomBy(Math.log(detector.getScaleFactor()) / Math.log(2), detector.getFocusX(), detector.getFocusY());
       }
 
       return true;
@@ -476,8 +513,9 @@ final class MapGestureDetector {
       }
 
       beginTime = detector.getEventTime();
-      MapboxEvent.trackGestureEvent(projection,
-        MapboxEvent.GESTURE_ROTATION_START, detector.getFocusX(), detector.getFocusY(), transform.getZoom());
+      MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+        getLocationFromGesture(detector.getFocusX(), detector.getFocusY()),
+        MapboxEvent.GESTURE_ROTATION_START, transform));
       return true;
     }
 
@@ -556,8 +594,9 @@ final class MapGestureDetector {
       }
 
       beginTime = detector.getEventTime();
-      MapboxEvent.trackGestureEvent(projection,
-        MapboxEvent.GESTURE_PITCH_START, detector.getFocusX(), detector.getFocusY(), transform.getZoom());
+      MapboxTelemetry.getInstance().pushEvent(MapboxEventWrapper.buildMapClickEvent(
+        getLocationFromGesture(detector.getFocusX(), detector.getFocusY()),
+        MapboxEvent.GESTURE_PITCH_START, transform));
       return true;
     }
 
@@ -608,34 +647,6 @@ final class MapGestureDetector {
       dragStarted = true;
 
       return true;
-    }
-  }
-
-  // This class handles input events from the zoom control buttons
-  // Zoom controls allow single touch only devices to zoom in and out
-  private static class OnZoomListener implements ZoomButtonsController.OnZoomListener {
-
-    private UiSettings uiSettings;
-    private Transform transform;
-
-    OnZoomListener(UiSettings uiSettings, Transform transform) {
-      this.uiSettings = uiSettings;
-      this.transform = transform;
-    }
-
-    // Not used
-    @Override
-    public void onVisibilityChanged(boolean visible) {
-      // Ignore
-    }
-
-    // Called when user pushes a zoom button
-    @Override
-    public void onZoom(boolean zoomIn) {
-      if (!uiSettings.isZoomGesturesEnabled()) {
-        return;
-      }
-      transform.zoom(zoomIn);
     }
   }
 

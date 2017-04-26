@@ -1,15 +1,11 @@
 package com.mapbox.mapboxsdk.testapp.activity.camera;
 
 import android.os.Bundle;
-import android.support.v7.app.ActionBar;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-
-import timber.log.Timber;
-
-import android.view.MenuItem;
 
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.camera.CameraUpdate;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -17,16 +13,22 @@ import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.mapboxsdk.testapp.R;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * Test activity showcasing using the LatLngBounds camera API.
+ * <p>
+ * This activity opens the map at zoom level 0 and animates into a bounds set by Los Angeles and New York
+ * with some additional padding and an animation duration of 1500 ms.
+ * </p>
+ */
 public class LatLngBoundsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
   private static final LatLng LOS_ANGELES = new LatLng(34.053940, -118.242622);
   private static final LatLng NEW_YORK = new LatLng(40.712730, -74.005953);
+
+  private final LatLng CHINA_BOTTOM_LEFT = new LatLng(15.68169, 73.499857);
+  private final LatLng CHINA_TOP_RIGHT = new LatLng(53.560711, 134.77281);
 
   private MapView mapView;
   private MapboxMap mapboxMap;
@@ -36,15 +38,6 @@ public class LatLngBoundsActivity extends AppCompatActivity implements OnMapRead
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_visible_bounds);
 
-    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-    setSupportActionBar(toolbar);
-
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setDisplayHomeAsUpEnabled(true);
-      actionBar.setDisplayShowHomeEnabled(true);
-    }
-
     mapView = (MapView) findViewById(R.id.mapView);
     mapView.setStyleUrl(Style.DARK);
     mapView.onCreate(savedInstanceState);
@@ -52,41 +45,31 @@ public class LatLngBoundsActivity extends AppCompatActivity implements OnMapRead
   }
 
   @Override
-  public void onMapReady(MapboxMap map) {
+  public void onMapReady(final MapboxMap map) {
     mapboxMap = map;
-    UiSettings uiSettings = mapboxMap.getUiSettings();
-    uiSettings.setAllGesturesEnabled(false);
+    moveToBounds(new LatLngBounds.Builder().include(NEW_YORK).include(LOS_ANGELES).build(), new int[] {0, 0, 0, 0});
+    new Handler().postDelayed(new Runnable() {
+      @Override
+      public void run() {
+        moveToBounds(new LatLngBounds.Builder().include(CHINA_BOTTOM_LEFT).include(CHINA_TOP_RIGHT).build(),
+          new int[] {100, 100, 100, 100 });
+      }
+    }, 5000);
+  }
 
-    mapboxMap.addMarker(new MarkerOptions()
-      .title("Los Angeles")
-      .snippet("City Hall")
-      .position(LOS_ANGELES));
-
-    mapboxMap.addMarker(new MarkerOptions()
-      .title("New York")
-      .snippet("City Hall")
-      .position(NEW_YORK));
-
-    List<LatLng> points = new ArrayList<>();
-    points.add(NEW_YORK);
-    points.add(LOS_ANGELES);
-
-    // Create Bounds
-    final LatLngBounds bounds = new LatLngBounds.Builder()
-      .includes(points)
-      .build();
-
-    // Add map padding
-    int mapPadding = (int) getResources().getDimension(R.dimen.fab_margin);
-    mapboxMap.setPadding(mapPadding, mapPadding, mapPadding, mapPadding);
-
-    // Move camera to the bounds with added padding
-    int padding = (int) getResources().getDimension(R.dimen.coordinatebounds_margin);
-    mapboxMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
-
-    // Log data
-    Timber.e("Move to bounds: " + bounds.toString());
-    Timber.e("Resulting bounds:" + mapboxMap.getProjection().getVisibleRegion().latLngBounds.toString());
+  private void moveToBounds(LatLngBounds latLngBounds, int[] padding) {
+    mapboxMap.clear();
+    mapboxMap.addMarker(new MarkerOptions().position(latLngBounds.getNorthEast()));
+    mapboxMap.addMarker(new MarkerOptions().position(latLngBounds.getSouthEast()));
+    mapboxMap.addMarker(new MarkerOptions().position(latLngBounds.getSouthWest()));
+    mapboxMap.addMarker(new MarkerOptions().position(latLngBounds.getNorthWest()));
+    CameraUpdate update =
+      CameraUpdateFactory.newLatLngBounds(latLngBounds,
+        padding[0],
+        padding[1],
+        padding[2],
+        padding[3]);
+    mapboxMap.moveCamera(update);
   }
 
   @Override
@@ -129,16 +112,5 @@ public class LatLngBoundsActivity extends AppCompatActivity implements OnMapRead
   public void onLowMemory() {
     super.onLowMemory();
     mapView.onLowMemory();
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    switch (item.getItemId()) {
-      case android.R.id.home:
-        onBackPressed();
-        return true;
-      default:
-        return super.onOptionsItemSelected(item);
-    }
   }
 }

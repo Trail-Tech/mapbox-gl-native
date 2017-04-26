@@ -24,9 +24,10 @@ Tileset TileSourceImpl::parseTileJSON(const std::string& json, const std::string
         throw std::runtime_error(message.str());
     }
 
-    conversion::Result<Tileset> result = conversion::convert<Tileset>(document);
+    conversion::Error error;
+    optional<Tileset> result = conversion::convert<Tileset, JSValue>(document, error);
     if (!result) {
-        throw std::runtime_error(result.error().message);
+        throw std::runtime_error(error.message);
     }
 
     // TODO: Remove this hack by delivering proper URLs in the TileJSON to begin with.
@@ -107,15 +108,17 @@ void TileSourceImpl::loadDescription(FileSource& fileSource) {
 
             observer->onSourceLoaded(base);
             if (attributionChanged) {
-                observer->onSourceAttributionChanged(base, newTileset.attribution);
+                observer->onSourceChanged(base);
             }
         }
     });
 }
 
-Range<uint8_t> TileSourceImpl::getZoomRange() {
-    assert(loaded);
-    return tileset.zoomRange;
+optional<Range<uint8_t>> TileSourceImpl::getZoomRange() const {
+    if (loaded) {
+        return tileset.zoomRange;
+    }
+    return {};
 }
 
 optional<std::string> TileSourceImpl::getAttribution() const {

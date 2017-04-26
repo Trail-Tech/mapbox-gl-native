@@ -1,7 +1,6 @@
 #include <mbgl/test/util.hpp>
 
 #include <mbgl/util/constants.hpp>
-#include <mbgl/util/geo.hpp>
 #include <mbgl/util/projection.hpp>
 
 #include <limits>
@@ -36,33 +35,43 @@ TEST(Projection, MetersPerPixelAtLatitude) {
 }
 
 TEST(Projection, ProjectedMeters) {
-    const auto southWest = LatLng { -util::LATITUDE_MAX, -util::LONGITUDE_MAX };
-    const auto northEast = LatLng { util::LATITUDE_MAX, util::LONGITUDE_MAX };
-
     auto latLng = LatLng {};
     auto projectedMeters = Projection::projectedMetersForLatLng(latLng);
-    EXPECT_EQ(projectedMeters.northing, projectedMeters.easting);
+    EXPECT_EQ(projectedMeters.northing(), projectedMeters.easting());
     EXPECT_EQ(latLng, Projection::latLngForProjectedMeters(projectedMeters));
 
-    latLng = LatLng { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest() };
-    projectedMeters = Projection::projectedMetersForLatLng(latLng);
-    EXPECT_EQ(projectedMeters, Projection::projectedMetersForLatLng(southWest));
-    EXPECT_DOUBLE_EQ(projectedMeters.northing, -20037508.342789274);
-    EXPECT_DOUBLE_EQ(projectedMeters.easting, -20037508.342789244);
+    const auto southWest = LatLng { -util::LATITUDE_MAX, -util::LONGITUDE_MAX };
+    projectedMeters = Projection::projectedMetersForLatLng(southWest);
+    EXPECT_DOUBLE_EQ(projectedMeters.northing(), -20037508.342789274);
+    EXPECT_DOUBLE_EQ(projectedMeters.easting(), -20037508.342789244);
 
-    latLng = LatLng { std::numeric_limits<double>::max(), std::numeric_limits<double>::max() };
-    projectedMeters = Projection::projectedMetersForLatLng(latLng);
-    EXPECT_EQ(projectedMeters, Projection::projectedMetersForLatLng(northEast));
-    EXPECT_DOUBLE_EQ(projectedMeters.northing, -Projection::projectedMetersForLatLng(southWest).northing);
-    EXPECT_DOUBLE_EQ(projectedMeters.easting, -Projection::projectedMetersForLatLng(southWest).easting);
+    const auto northEast = LatLng { util::LATITUDE_MAX, util::LONGITUDE_MAX };
+    projectedMeters = Projection::projectedMetersForLatLng(northEast);
+    EXPECT_DOUBLE_EQ(projectedMeters.northing(), 20037508.342789274);
+    EXPECT_DOUBLE_EQ(projectedMeters.easting(), 20037508.342789244);
 
     projectedMeters = ProjectedMeters { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest() };
     latLng = Projection::latLngForProjectedMeters(projectedMeters);
-    EXPECT_EQ(latLng.latitude, -util::LATITUDE_MAX);
-    EXPECT_EQ(latLng.longitude, -util::LONGITUDE_MAX);
+    EXPECT_EQ(latLng.latitude(), -util::LATITUDE_MAX);
+    EXPECT_EQ(latLng.longitude(), -util::LONGITUDE_MAX);
 
     projectedMeters = ProjectedMeters { std::numeric_limits<double>::max(), std::numeric_limits<double>::max() };
     latLng = Projection::latLngForProjectedMeters(projectedMeters);
-    EXPECT_EQ(latLng.latitude, util::LATITUDE_MAX);
-    EXPECT_EQ(latLng.longitude, util::LONGITUDE_MAX);
+    EXPECT_EQ(latLng.latitude(), util::LATITUDE_MAX);
+    EXPECT_EQ(latLng.longitude(), util::LONGITUDE_MAX);
+}
+
+TEST(Projection, InvalidProjectedMeters) {
+    try {
+        ProjectedMeters { NAN };
+        ASSERT_TRUE(false) << "should throw";
+    } catch (const std::domain_error& error) {
+        ASSERT_EQ(std::string(error.what()), "northing must not be NaN");
+    }
+    try {
+        ProjectedMeters { 0, NAN };
+        ASSERT_TRUE(false) << "should throw";
+    } catch (const std::domain_error& error) {
+        ASSERT_EQ(std::string(error.what()), "easting must not be NaN");
+    }
 }

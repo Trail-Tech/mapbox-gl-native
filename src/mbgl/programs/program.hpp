@@ -1,43 +1,74 @@
 #pragma once
 
 #include <mbgl/gl/program.hpp>
+#include <mbgl/gl/features.hpp>
+#include <mbgl/programs/binary_program.hpp>
+#include <mbgl/programs/attributes.hpp>
 #include <mbgl/programs/program_parameters.hpp>
-
-#include <sstream>
-#include <cassert>
+#include <mbgl/style/paint_property.hpp>
+#include <mbgl/shaders/shaders.hpp>
+#include <mbgl/util/io.hpp>
 
 namespace mbgl {
 
-template <class Shaders, class Primitive, class Attributes, class Uniforms>
-class Program : public gl::Program<Primitive, Attributes, Uniforms> {
+template <class Shaders,
+          class Primitive,
+          class LayoutAttrs,
+          class Uniforms,
+          class PaintProperties>
+class Program {
 public:
-    using ParentType = gl::Program<Primitive, Attributes, Uniforms>;
+    using LayoutAttributes = LayoutAttrs;
+    using LayoutVertex = typename LayoutAttributes::Vertex;
+
+    using PaintPropertyBinders = typename PaintProperties::Binders;
+    using PaintAttributes = typename PaintPropertyBinders::Attributes;
+    using Attributes = gl::ConcatenateAttributes<LayoutAttributes, PaintAttributes>;
+
+    using UniformValues = typename Uniforms::Values;
+    using PaintUniforms = typename PaintPropertyBinders::Uniforms;
+    using AllUniforms = gl::ConcatenateUniforms<Uniforms, PaintUniforms>;
+
+    using ProgramType = gl::Program<Primitive, Attributes, AllUniforms>;
+
+    ProgramType program;
 
     Program(gl::Context& context, const ProgramParameters& programParameters)
-        : ParentType(context, vertexSource(programParameters), fragmentSource(programParameters))
-        {}
-    
-    static std::string pixelRatioDefine(const ProgramParameters& parameters) {
-        std::ostringstream pixelRatioSS;
-        pixelRatioSS.imbue(std::locale("C"));
-        pixelRatioSS.setf(std::ios_base::showpoint);
-        pixelRatioSS << parameters.pixelRatio;
-        return std::string("#define DEVICE_PIXEL_RATIO ") + pixelRatioSS.str() + "\n";
+        : program(ProgramType::createProgram(
+            context,
+            programParameters,
+            Shaders::name,
+            Shaders::vertexSource,
+            Shaders::fragmentSource)) {
     }
 
-    static std::string fragmentSource(const ProgramParameters& parameters) {
-        std::string source = pixelRatioDefine(parameters) + Shaders::fragmentSource;
-        if (parameters.overdraw) {
-            assert(source.find("#ifdef OVERDRAW_INSPECTOR") != std::string::npos);
-            source.replace(source.find_first_of('\n'), 1, "\n#define OVERDRAW_INSPECTOR\n");
-        }
-        return source;
+    template <class DrawMode>
+    void draw(gl::Context& context,
+              DrawMode drawMode,
+              gl::DepthMode depthMode,
+              gl::StencilMode stencilMode,
+              gl::ColorMode colorMode,
+              UniformValues&& uniformValues,
+              const gl::VertexBuffer<LayoutVertex>& layoutVertexBuffer,
+              const gl::IndexBuffer<DrawMode>& indexBuffer,
+              const gl::SegmentVector<Attributes>& segments,
+              const PaintPropertyBinders& paintPropertyBinders,
+              const typename PaintProperties::Evaluated& currentProperties,
+              float currentZoom) {
+        program.draw(
+            context,
+            std::move(drawMode),
+            std::move(depthMode),
+            std::move(stencilMode),
+            std::move(colorMode),
+            uniformValues
+                .concat(paintPropertyBinders.uniformValues(currentZoom)),
+            LayoutAttributes::allVariableBindings(layoutVertexBuffer)
+                .concat(paintPropertyBinders.attributeBindings(currentProperties)),
+            indexBuffer,
+            segments
+        );
     }
-
-    static std::string vertexSource(const ProgramParameters& parameters) {
-        return pixelRatioDefine(parameters) + Shaders::vertexSource;
-    }
-
 };
 
 } // namespace mbgl

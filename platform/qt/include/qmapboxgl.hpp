@@ -1,6 +1,7 @@
 #ifndef QMAPBOXGL_H
 #define QMAPBOXGL_H
 
+#include <QImage>
 #include <QMapbox>
 #include <QMargins>
 #include <QObject>
@@ -8,6 +9,8 @@
 #include <QSize>
 #include <QVector>
 #include <memory>
+#include <QString>
+#include <QStringList>
 
 class QImage;
 class QMargins;
@@ -15,6 +18,7 @@ class QSize;
 class QString;
 class QStringList;
 class QOpenGLFramebufferObject;
+
 
 class QMapboxGLPrivate;
 
@@ -100,7 +104,6 @@ class Q_DECL_EXPORT QMapboxGL : public QObject
     Q_PROPERTY(QMargins margins READ margins WRITE setMargins)
 
 public:
-    // Reflects mbgl::MapChange.
     enum MapChange {
         MapChangeRegionWillChange = 0,
         MapChangeRegionWillChangeAnimated,
@@ -185,11 +188,8 @@ public:
 
     void addAnnotationIcon(const QString &name, const QImage &sprite);
 
-    QMapbox::AnnotationID addPointAnnotation(const QMapbox::PointAnnotation &);
-    QMapbox::AnnotationID addShapeAnnotation(const QMapbox::ShapeAnnotation &);
-
-    void updatePointAnnotation(QMapbox::AnnotationID, const QMapbox::PointAnnotation &);
-
+    QMapbox::AnnotationID addAnnotation(const QMapbox::Annotation &);
+    void updateAnnotation(QMapbox::AnnotationID, const QMapbox::Annotation &);
     void removeAnnotation(QMapbox::AnnotationID);
 
     void setLayoutProperty(const QString &layer, const QString &property, const QVariant &value);
@@ -202,7 +202,11 @@ public:
     void rotateBy(const QPointF &first, const QPointF &second);
 
     void resize(const QSize &size, const QSize &framebufferSize);
+    void setFramebufferObject(quint32 fbo);
 
+    double metersPerPixelAtLatitude(double latitude, double zoom) const;
+    QMapbox::ProjectedMeters projectedMetersForCoordinate(const QMapbox::Coordinate &) const;
+    QMapbox::Coordinate coordinateForProjectedMeters(const QMapbox::ProjectedMeters &) const;
     QPointF pixelForCoordinate(const QMapbox::Coordinate &) const;
     QMapbox::Coordinate coordinateForPixel(const QPointF &) const;
 
@@ -214,6 +218,7 @@ public:
 
     void addSource(const QString &sourceID, const QVariantMap& params);
     void addSource(const QString &sourceID, std::unique_ptr<QMapbox::QGeoJSONVT> data);
+    bool sourceExists(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
     void updateSource(const QString &sourceID, std::unique_ptr<QMapbox::QGeoJSONVT> data);
     void removeSource(const QString &sourceID);
@@ -232,16 +237,13 @@ public:
         void* context,
         char* before = NULL);
     void addLayer(const QVariantMap &params);
+    bool layerExists(const QString &id);
     void removeLayer(const QString &id);
 
     void setFilter(const QString &layer, const QVariant &filter);
 
 public slots:
-#if QT_VERSION >= 0x050000
-    void render(QOpenGLFramebufferObject *fbo = NULL);
-#else
     void render();
-#endif
     void connectionEstablished();
 
 signals:

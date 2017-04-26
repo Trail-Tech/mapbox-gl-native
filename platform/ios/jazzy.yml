@@ -19,10 +19,12 @@ custom_categories:
     children:
       - Adding Points to a Map
       - Runtime Styling
+      - Using Style Functions at Runtime
       - Working with Mapbox Studio
       - Working with GeoJSON Data
       - For Style Authors
       - Info.plist Keys
+      - Gesture Recognizers
   - name: Maps
     children:
       - MGLAccountManager
@@ -115,3 +117,4 @@ custom_categories:
       - MGLClockDirectionFormatter
       - MGLCompassDirectionFormatter
       - MGLCoordinateFormatter
+      - MGLDistanceFormatter

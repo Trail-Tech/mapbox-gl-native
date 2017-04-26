@@ -1,7 +1,9 @@
 #pragma once
 
+#include <mbgl/sprite/sprite_atlas.hpp>
 #include <mbgl/tile/tile.hpp>
 #include <mbgl/tile/geometry_tile_worker.hpp>
+#include <mbgl/text/glyph_atlas.hpp>
 #include <mbgl/text/placement_config.hpp>
 #include <mbgl/util/feature.hpp>
 #include <mbgl/actor/actor.hpp>
@@ -16,14 +18,15 @@ namespace mbgl {
 class GeometryTileData;
 class FeatureIndex;
 class CollisionTile;
+class RenderLayer;
 
 namespace style {
 class Style;
-class Layer;
 class UpdateParameters;
+class SourceQueryOptions;
 } // namespace style
 
-class GeometryTile : public Tile {
+class GeometryTile : public Tile, public GlyphRequestor, IconRequestor {
 public:
     GeometryTile(const OverscaledTileID&,
                  std::string sourceID,
@@ -35,16 +38,25 @@ public:
     void setData(std::unique_ptr<const GeometryTileData>);
 
     void setPlacementConfig(const PlacementConfig&) override;
-    void symbolDependenciesChanged() override;
     void redoLayout() override;
+    
+    void onGlyphsAvailable(GlyphPositionMap) override;
+    void onIconsAvailable(SpriteAtlas*, IconMap) override;
+    
+    void getGlyphs(GlyphDependencies);
+    void getIcons(IconDependencyMap);
 
-    Bucket* getBucket(const style::Layer&) override;
+    Bucket* getBucket(const RenderLayer&) const override;
 
     void queryRenderedFeatures(
             std::unordered_map<std::string, std::vector<Feature>>& result,
             const GeometryCoordinates& queryGeometry,
             const TransformState&,
-            const optional<std::vector<std::string>>& layerIDs) override;
+            const RenderedQueryOptions& options) override;
+
+    void querySourceFeatures(
+        std::vector<Feature>& result,
+        const style::SourceQueryOptions&) override;
 
     void cancel() override;
 
@@ -66,6 +78,11 @@ public:
     void onPlacement(PlacementResult);
 
     void onError(std::exception_ptr);
+    
+protected:
+    const GeometryTileData* getData() {
+        return data.get();
+    }
 
 private:
     const std::string sourceID;
@@ -77,6 +94,10 @@ private:
     std::shared_ptr<Mailbox> mailbox;
     Actor<GeometryTileWorker> worker;
 
+    GlyphAtlas& glyphAtlas;
+    std::set<SpriteAtlas*> pendingSpriteAtlases;
+    IconAtlasMap iconAtlasMap;
+    
     uint64_t correlationID = 0;
     optional<PlacementConfig> requestedConfig;
 

@@ -1,14 +1,16 @@
 #import <Cocoa/Cocoa.h>
 
-#include <mbgl/sprite/sprite_image.hpp>
+#include <mbgl/style/image.hpp>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSImage (MGLAdditions)
 
-- (nullable instancetype)initWithMGLSpriteImage:(const mbgl::SpriteImage *)spriteImage;
+- (nullable instancetype)initWithMGLPremultipliedImage:(mbgl::PremultipliedImage&&)image;
 
-- (std::unique_ptr<mbgl::SpriteImage>)mgl_spriteImage;
+- (nullable instancetype)initWithMGLStyleImage:(const mbgl::style::Image *)image;
+
+- (std::unique_ptr<mbgl::style::Image>)mgl_styleImage;
 
 @end
 

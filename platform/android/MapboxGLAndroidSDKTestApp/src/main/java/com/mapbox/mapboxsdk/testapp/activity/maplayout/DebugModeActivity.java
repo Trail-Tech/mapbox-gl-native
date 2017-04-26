@@ -3,21 +3,22 @@ package com.mapbox.mapboxsdk.testapp.activity.maplayout;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-
-import timber.log.Timber;
-
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
+import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.constants.Style;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.testapp.R;
 
+import timber.log.Timber;
+
+/**
+ * Test Activity showcasing the different debug modes and allows to cycle between the default map styles.
+ */
 public class DebugModeActivity extends AppCompatActivity {
 
   private MapView mapView;
@@ -39,15 +40,6 @@ public class DebugModeActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_debug_mode);
 
-    final Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-    setSupportActionBar(toolbar);
-
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setDisplayHomeAsUpEnabled(true);
-      actionBar.setDisplayShowHomeEnabled(true);
-    }
-
     mapView = (MapView) findViewById(R.id.mapView);
     mapView.setTag(true);
     mapView.setStyleUrl(STYLES[currentStyleIndex]);
@@ -57,8 +49,20 @@ public class DebugModeActivity extends AppCompatActivity {
       @Override
       public void onMapReady(@NonNull MapboxMap map) {
         mapboxMap = map;
+
+        mapboxMap.getUiSettings().setZoomControlsEnabled(true);
+
+        // show current zoom level on screen
+        final TextView textView = (TextView) findViewById(R.id.textZoom);
+        mapboxMap.setOnCameraChangeListener(new MapboxMap.OnCameraChangeListener() {
+          @Override
+          public void onCameraChange(CameraPosition position) {
+            textView.setText(String.format(getString(R.string.debug_zoom), position.zoom));
+          }
+        });
       }
     });
+
 
     FloatingActionButton fabDebug = (FloatingActionButton) findViewById(R.id.fabDebug);
     fabDebug.setOnClickListener(new View.OnClickListener() {
@@ -80,7 +84,12 @@ public class DebugModeActivity extends AppCompatActivity {
           if (currentStyleIndex == STYLES.length) {
             currentStyleIndex = 0;
           }
-          mapboxMap.setStyleUrl(STYLES[currentStyleIndex]);
+          mapboxMap.setStyleUrl(STYLES[currentStyleIndex], new MapboxMap.OnStyleLoadedListener() {
+            @Override
+            public void onStyleLoaded(String style) {
+              Timber.d("Style loaded %s", style);
+            }
+          });
         }
       }
     });
@@ -126,17 +135,5 @@ public class DebugModeActivity extends AppCompatActivity {
   public void onLowMemory() {
     super.onLowMemory();
     mapView.onLowMemory();
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    switch (item.getItemId()) {
-      case android.R.id.home:
-        onBackPressed();
-        return true;
-
-      default:
-        return super.onOptionsItemSelected(item);
-    }
   }
 }

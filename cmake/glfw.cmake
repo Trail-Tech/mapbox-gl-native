@@ -16,20 +16,11 @@ target_compile_options(mbgl-glfw
 )
 
 target_include_directories(mbgl-glfw
-    PRIVATE include
-    PRIVATE src # TODO: eliminate
     PRIVATE platform/default
 )
 
 target_link_libraries(mbgl-glfw
     PRIVATE mbgl-core
-)
-
-add_custom_command(
-    TARGET mbgl-glfw POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/common/ca-bundle.crt
-            ${CMAKE_CURRENT_BINARY_DIR}/ca-bundle.crt
 )
 
 target_add_mason_package(mbgl-glfw PRIVATE glfw)

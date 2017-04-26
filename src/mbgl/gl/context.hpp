@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mbgl/gl/features.hpp>
 #include <mbgl/gl/object.hpp>
 #include <mbgl/gl/state.hpp>
 #include <mbgl/gl/value.hpp>
@@ -13,7 +14,6 @@
 #include <mbgl/gl/depth_mode.hpp>
 #include <mbgl/gl/stencil_mode.hpp>
 #include <mbgl/gl/color_mode.hpp>
-#include <mbgl/gl/segment.hpp>
 #include <mbgl/util/noncopyable.hpp>
 
 
@@ -22,7 +22,6 @@
 #include <vector>
 #include <array>
 #include <string>
-#include <unordered_map>
 
 namespace mbgl {
 
@@ -31,15 +30,39 @@ class View;
 namespace gl {
 
 constexpr size_t TextureMax = 64;
+using ProcAddress = void (*)();
+
+namespace extension {
+class VertexArray;
+class Debugging;
+class ProgramBinary;
+} // namespace extension
 
 class Context : private util::noncopyable {
 public:
+    Context();
     ~Context();
+
+    void initializeExtensions(const std::function<gl::ProcAddress(const char*)>&);
+
+    void enableDebugging();
 
     UniqueShader createShader(ShaderType type, const std::string& source);
     UniqueProgram createProgram(ShaderID vertexShader, ShaderID fragmentShader);
+    UniqueProgram createProgram(BinaryProgramFormat binaryFormat, const std::string& binaryProgram);
+    void verifyProgramLinkage(ProgramID);
     void linkProgram(ProgramID);
     UniqueTexture createTexture();
+
+    bool supportsVertexArrays() const;
+    UniqueVertexArray createVertexArray();
+
+#if MBGL_HAS_BINARY_PROGRAMS
+    bool supportsProgramBinaries() const;
+#else
+    constexpr bool supportsProgramBinaries() const { return false; }
+#endif
+    optional<std::pair<BinaryProgramFormat, std::string>> getBinaryProgram(ProgramID) const;
 
     template <class Vertex, class DrawMode>
     VertexBuffer<Vertex, DrawMode> createVertexBuffer(VertexVector<Vertex, DrawMode>&& v) {
@@ -119,24 +142,19 @@ public:
                optional<float> depth,
                optional<int32_t> stencil);
 
-    struct Drawable {
-        DrawMode drawMode;
-        DepthMode depthMode;
-        StencilMode stencilMode;
-        ColorMode colorMode;
-        gl::ProgramID program;
-        gl::BufferID vertexBuffer;
-        gl::BufferID indexBuffer;
-        const std::vector<Segment>& segments;
-        std::function<void ()> bindUniforms;
-        std::function<void (std::size_t)> bindAttributes;
-    };
-
-    void draw(const Drawable&);
+    void setDrawMode(const Points&);
+    void setDrawMode(const Lines&);
+    void setDrawMode(const LineStrip&);
+    void setDrawMode(const Triangles&);
+    void setDrawMode(const TriangleStrip&);
 
     void setDepthMode(const DepthMode&);
     void setStencilMode(const StencilMode&);
     void setColorMode(const ColorMode&);
+
+    void draw(PrimitiveType,
+              std::size_t indexOffset,
+              std::size_t indexLength);
 
     // Actually remove the objects we marked as abandoned with the above methods.
     // Only call this while the OpenGL context is exclusive to this thread.
@@ -158,12 +176,30 @@ public:
 
     void setDirtyState();
 
+    extension::Debugging* getDebuggingExtension() const {
+        return debugging.get();
+    }
+
+    extension::VertexArray* getVertexArrayExtension() const {
+        return vertexArray.get();
+    }
+
+private:
+    std::unique_ptr<extension::Debugging> debugging;
+    std::unique_ptr<extension::VertexArray> vertexArray;
+#if MBGL_HAS_BINARY_PROGRAMS
+    std::unique_ptr<extension::ProgramBinary> programBinary;
+#endif
+
+public:
     State<value::ActiveTexture> activeTexture;
     State<value::BindFramebuffer> bindFramebuffer;
     State<value::Viewport> viewport;
     std::array<State<value::BindTexture>, 2> texture;
-    State<value::BindVertexArray> vertexArrayObject;
+    State<value::BindVertexArray, const Context&> vertexArrayObject { *this };
     State<value::Program> program;
+    State<value::BindVertexBuffer> vertexBuffer;
+    State<value::BindElementBuffer> elementBuffer;
 
 #if not MBGL_USE_GLES2
     State<value::PixelZoom> pixelZoom;
@@ -196,8 +232,6 @@ private:
 #if not MBGL_USE_GLES2
     State<value::PointSize> pointSize;
 #endif // MBGL_USE_GLES2
-    State<value::BindVertexBuffer> vertexBuffer;
-    State<value::BindElementBuffer> elementBuffer;
 
     UniqueBuffer createVertexBuffer(const void* data, std::size_t size);
     UniqueBuffer createIndexBuffer(const void* data, std::size_t size);
@@ -209,12 +243,6 @@ private:
 #if not MBGL_USE_GLES2
     void drawPixels(Size size, const void* data, TextureFormat);
 #endif // MBGL_USE_GLES2
-
-    PrimitiveType operator()(const Points&);
-    PrimitiveType operator()(const Lines&);
-    PrimitiveType operator()(const LineStrip&);
-    PrimitiveType operator()(const Triangles&);
-    PrimitiveType operator()(const TriangleStrip&);
 
     friend detail::ProgramDeleter;
     friend detail::ShaderDeleter;
@@ -233,6 +261,10 @@ private:
     std::vector<VertexArrayID> abandonedVertexArrays;
     std::vector<FramebufferID> abandonedFramebuffers;
     std::vector<RenderbufferID> abandonedRenderbuffers;
+
+public:
+    // For testing
+    bool disableVAOExtension = false;
 };
 
 } // namespace gl

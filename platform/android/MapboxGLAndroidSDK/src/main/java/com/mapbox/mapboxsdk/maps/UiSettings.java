@@ -3,14 +3,19 @@ package com.mapbox.mapboxsdk.maps;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PointF;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.res.ResourcesCompat;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -21,6 +26,8 @@ import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.maps.widgets.CompassView;
 import com.mapbox.mapboxsdk.utils.ColorUtils;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * Settings for the user interface of a MapboxMap. To obtain this interface, call getUiSettings().
@@ -47,6 +54,9 @@ public final class UiSettings {
   private boolean scrollGestureChangeAllowed = true;
 
   private boolean zoomControlsEnabled;
+
+  private boolean doubleTapGesturesEnabled = true;
+  private boolean doubleTapGestureChangeAllowed = true;
 
   private boolean deselectMarkersOnTap = true;
 
@@ -99,6 +109,8 @@ public final class UiSettings {
     setTiltGesturesEnabled(options.getTiltGesturesEnabled());
     setTiltGestureChangeAllowed(options.getTiltGesturesEnabled());
     setZoomControlsEnabled(options.getZoomControlsEnabled());
+    setDoubleTapGesturesEnabled(options.getDoubleTapGesturesEnabled());
+    setDoubleTapGestureChangeAllowed(options.getDoubleTapGesturesEnabled());
   }
 
   private void saveGestures(Bundle outState) {
@@ -110,6 +122,8 @@ public final class UiSettings {
     outState.putBoolean(MapboxConstants.STATE_ROTATE_ENABLED_CHANGE, isRotateGestureChangeAllowed());
     outState.putBoolean(MapboxConstants.STATE_TILT_ENABLED, isTiltGesturesEnabled());
     outState.putBoolean(MapboxConstants.STATE_TILT_ENABLED_CHANGE, isTiltGestureChangeAllowed());
+    outState.putBoolean(MapboxConstants.STATE_DOUBLE_TAP_ENABLED, isDoubleTapGesturesEnabled());
+    outState.putBoolean(MapboxConstants.STATE_DOUBLE_TAP_ENABLED_CHANGE, isDoubleTapGestureChangeAllowed());
   }
 
   private void restoreGestures(Bundle savedInstanceState) {
@@ -121,6 +135,8 @@ public final class UiSettings {
     setRotateGestureChangeAllowed(savedInstanceState.getBoolean(MapboxConstants.STATE_ROTATE_ENABLED_CHANGE));
     setTiltGesturesEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_TILT_ENABLED));
     setTiltGestureChangeAllowed(savedInstanceState.getBoolean(MapboxConstants.STATE_TILT_ENABLED_CHANGE));
+    setDoubleTapGesturesEnabled(savedInstanceState.getBoolean(MapboxConstants.STATE_DOUBLE_TAP_ENABLED));
+    setDoubleTapGestureChangeAllowed(savedInstanceState.getBoolean(MapboxConstants.STATE_DOUBLE_TAP_ENABLED_CHANGE));
   }
 
   private void initialiseCompass(MapboxMapOptions options, Resources resources) {
@@ -134,6 +150,10 @@ public final class UiSettings {
       setCompassMargins(tenDp, tenDp, tenDp, tenDp);
     }
     setCompassFadeFacingNorth(options.getCompassFadeFacingNorth());
+    if (options.getCompassImage() == null) {
+      options.compassImage(ResourcesCompat.getDrawable(resources, R.drawable.mapbox_compass_icon, null));
+    }
+    setCompassImage(options.getCompassImage());
   }
 
   private void saveCompass(Bundle outState) {
@@ -144,6 +164,16 @@ public final class UiSettings {
     outState.putInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM, getCompassMarginBottom());
     outState.putInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT, getCompassMarginRight());
     outState.putBoolean(MapboxConstants.STATE_COMPASS_FADE_WHEN_FACING_NORTH, isCompassFadeWhenFacingNorth());
+    outState.putByteArray(MapboxConstants.STATE_COMPASS_IMAGE_BITMAP,
+      convert(MapboxMapOptions.getBitmapFromDrawable(getCompassImage())));
+  }
+
+  private byte[] convert(Bitmap resource) {
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    resource.compress(Bitmap.CompressFormat.PNG, 100, stream);
+    byte[] byteArray = stream.toByteArray();
+
+    return byteArray;
   }
 
   private void restoreCompass(Bundle savedInstanceState) {
@@ -154,6 +184,15 @@ public final class UiSettings {
       savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_RIGHT),
       savedInstanceState.getInt(MapboxConstants.STATE_COMPASS_MARGIN_BOTTOM));
     setCompassFadeFacingNorth(savedInstanceState.getBoolean(MapboxConstants.STATE_COMPASS_FADE_WHEN_FACING_NORTH));
+    setCompassImage(decode(savedInstanceState.getByteArray(MapboxConstants.STATE_COMPASS_IMAGE_BITMAP)));
+  }
+
+  private Drawable decode(byte[] bitmap) {
+    Bitmap compass = BitmapFactory.decodeByteArray(bitmap, 0, bitmap.length);
+
+    Drawable compassImage = new BitmapDrawable(compassView.getResources(), compass);
+
+    return compassImage;
   }
 
   private void initialiseLogo(MapboxMapOptions options, Resources resources) {
@@ -288,6 +327,18 @@ public final class UiSettings {
   }
 
   /**
+   * Specifies the CompassView image.
+   * <p>
+   * By default this value is R.drawable.mapbox_compass_icon.
+   * </p>
+   *
+   * @param compass the drawable to show as image compass
+   */
+  public void setCompassImage(Drawable compass) {
+    compassView.setCompassImage(compass);
+  }
+
+  /**
    * Returns whether the compass performs a fading animation out when facing north.
    *
    * @return True if the compass will fade, false if it remains visible
@@ -353,6 +404,15 @@ public final class UiSettings {
    */
   public int getCompassMarginBottom() {
     return ((FrameLayout.LayoutParams) compassView.getLayoutParams()).bottomMargin;
+  }
+
+  /**
+   * Get the current configured CompassView image.
+   *
+   * @return the drawable used as compass image
+   */
+  public Drawable getCompassImage() {
+    return compassView.getCompassImage();
   }
 
   void update(@NonNull CameraPosition cameraPosition) {
@@ -696,6 +756,41 @@ public final class UiSettings {
   }
 
   /**
+   * <p>
+   * Changes whether the user may zoom the map with a double tap.
+   * </p>
+   * <p>
+   * This setting controls only user interactions with the map. If you set the value to false,
+   * you may still change the map location programmatically.
+   * </p>
+   * The default value is true.
+   *
+   * @param doubleTapGesturesEnabled If true, zooming with a double tap is enabled.
+   */
+  public void setDoubleTapGesturesEnabled(boolean doubleTapGesturesEnabled) {
+    if (doubleTapGestureChangeAllowed) {
+      this.doubleTapGesturesEnabled = doubleTapGesturesEnabled;
+    }
+  }
+
+  /**
+   * Returns whether the user may zoom the map with a double tap.
+   *
+   * @return If true, zooming with a double tap is enabled.
+   */
+  public boolean isDoubleTapGesturesEnabled() {
+    return doubleTapGesturesEnabled;
+  }
+
+  void setDoubleTapGestureChangeAllowed(boolean doubleTapGestureChangeAllowed) {
+    this.doubleTapGestureChangeAllowed = doubleTapGestureChangeAllowed;
+  }
+
+  boolean isDoubleTapGestureChangeAllowed() {
+    return doubleTapGestureChangeAllowed;
+  }
+
+  /**
    * Gets whether the markers are automatically deselected (and therefore, their infowindows
    * closed) when a map tap is detected.
    *
@@ -771,6 +866,7 @@ public final class UiSettings {
     setRotateGesturesEnabled(enabled);
     setTiltGesturesEnabled(enabled);
     setZoomGesturesEnabled(enabled);
+    setDoubleTapGesturesEnabled(enabled);
   }
 
   /**

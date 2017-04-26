@@ -24,17 +24,22 @@ public:
     DefaultFileSource(const std::string& cachePath,
                       const std::string& assetRoot,
                       uint64_t maximumCacheSize = util::DEFAULT_MAX_CACHE_SIZE);
+    DefaultFileSource(const std::string& cachePath,
+                      std::unique_ptr<FileSource>&& assetFileSource,
+                      uint64_t maximumCacheSize = util::DEFAULT_MAX_CACHE_SIZE);
     ~DefaultFileSource() override;
 
     bool supportsOptionalRequests() const override {
         return true;
     }
-    
+
     void setAPIBaseURL(const std::string&);
     std::string getAPIBaseURL() const;
 
     void setAccessToken(const std::string&);
     std::string getAccessToken() const;
+
+    void setResourceTransform(std::function<std::string(Resource::Kind, std::string&&)>);
 
     std::unique_ptr<AsyncRequest> request(const Resource&, Callback) override;
 
@@ -113,6 +118,22 @@ public:
      */
     void setOfflineMapboxTileCountLimit(uint64_t) const;
 
+    /*
+     * Pause file request activity.
+     *
+     * If pause is called then no revalidation or network request activity
+     * will occur.
+     */
+    void pause();
+
+    /*
+     * Resume file request activity.
+     *
+     * Calling resume will unpause the file source and process any tasks that
+     * expired while the file source was paused.
+     */
+    void resume();
+
     // For testing only.
     void put(const Resource&, const Response&);
 
@@ -122,6 +143,8 @@ private:
     const std::unique_ptr<util::Thread<Impl>> thread;
     const std::unique_ptr<FileSource> assetFileSource;
     const std::unique_ptr<FileSource> localFileSource;
+    std::string cachedBaseURL = mbgl::util::API_BASE_URL;
+    std::string cachedAccessToken;
 };
 
 } // namespace mbgl

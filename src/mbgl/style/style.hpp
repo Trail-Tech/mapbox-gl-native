@@ -5,6 +5,7 @@
 #include <mbgl/style/source_observer.hpp>
 #include <mbgl/style/layer_observer.hpp>
 #include <mbgl/style/update_batch.hpp>
+#include <mbgl/renderer/render_layer.hpp>
 #include <mbgl/text/glyph_atlas_observer.hpp>
 #include <mbgl/sprite/sprite_atlas_observer.hpp>
 #include <mbgl/map/mode.hpp>
@@ -28,6 +29,10 @@ class GlyphAtlas;
 class SpriteAtlas;
 class LineAtlas;
 class RenderData;
+class TransformState;
+class RenderedQueryOptions;
+class Scheduler;
+class RenderLayer;
 
 namespace style {
 
@@ -41,7 +46,7 @@ class Style : public GlyphAtlasObserver,
               public LayerObserver,
               public util::noncopyable {
 public:
-    Style(FileSource&, float pixelRatio);
+    Style(Scheduler&, FileSource&, float pixelRatio);
     ~Style() override;
 
     void setJSON(const std::string&);
@@ -77,6 +82,11 @@ public:
                     optional<std::string> beforeLayerID = {});
     std::unique_ptr<Layer> removeLayer(const std::string& layerID);
 
+    // Should be moved to Impl eventually
+    std::vector<const RenderLayer*> getRenderLayers() const;
+    std::vector<RenderLayer*> getRenderLayers();
+    RenderLayer* getRenderLayer(const std::string& id) const;
+
     std::string getName() const;
     LatLng getDefaultLatLng() const;
     double getDefaultZoom() const;
@@ -95,15 +105,16 @@ public:
 
     RenderData getRenderData(MapDebugOptions, float angle) const;
 
-    std::vector<Feature> queryRenderedFeatures(const QueryParameters&) const;
-
-    float getQueryRadius() const;
+    std::vector<Feature> queryRenderedFeatures(const ScreenLineString& geometry,
+                                               const TransformState& transformState,
+                                               const RenderedQueryOptions& options) const;
 
     void setSourceTileCacheSize(size_t);
     void onLowMemory();
 
     void dumpDebugLogs() const;
 
+    Scheduler& scheduler;
     FileSource& fileSource;
     std::unique_ptr<GlyphAtlas> glyphAtlas;
     std::unique_ptr<SpriteAtlas> spriteAtlas;
@@ -112,6 +123,7 @@ public:
 private:
     std::vector<std::unique_ptr<Source>> sources;
     std::vector<std::unique_ptr<Layer>> layers;
+    std::vector<std::unique_ptr<RenderLayer>> renderLayers;
     std::vector<std::string> classes;
     TransitionOptions transitionOptions;
 
@@ -123,8 +135,8 @@ private:
     double defaultPitch = 0;
 
     std::vector<std::unique_ptr<Layer>>::const_iterator findLayer(const std::string& layerID) const;
+    std::vector<std::unique_ptr<RenderLayer>>::const_iterator findRenderLayer(const std::string&) const;
     void reloadLayerSource(Layer&);
-    void updateSymbolDependentTiles();
 
     // GlyphStoreObserver implementation.
     void onGlyphsLoaded(const FontStack&, const GlyphRange&) override;
@@ -136,7 +148,7 @@ private:
 
     // SourceObserver implementation.
     void onSourceLoaded(Source&) override;
-    void onSourceAttributionChanged(Source&, const std::string&) override;
+    void onSourceChanged(Source&) override;
     void onSourceError(Source&, std::exception_ptr) override;
     void onSourceDescriptionChanged(Source&) override;
     void onTileChanged(Source&, const OverscaledTileID&) override;
@@ -146,6 +158,7 @@ private:
     void onLayerFilterChanged(Layer&) override;
     void onLayerVisibilityChanged(Layer&) override;
     void onLayerPaintPropertyChanged(Layer&) override;
+    void onLayerDataDrivenPaintPropertyChanged(Layer&) override;
     void onLayerLayoutPropertyChanged(Layer&, const char *) override;
 
     Observer nullObserver;
@@ -157,6 +170,7 @@ private:
     ZoomHistory zoomHistory;
     bool hasPendingTransitions = false;
 
+    void removeRenderLayer(const std::string& layerID);
 public:
     bool loaded = false;
 };

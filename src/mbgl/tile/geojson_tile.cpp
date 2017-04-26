@@ -1,5 +1,6 @@
 #include <mbgl/tile/geojson_tile.hpp>
 #include <mbgl/tile/geometry_tile_data.hpp>
+#include <mbgl/style/query.hpp>
 
 #include <mapbox/geojsonvt.hpp>
 #include <supercluster.hpp>
@@ -23,6 +24,10 @@ public:
 
     PropertyMap getProperties() const override {
         return feature.properties;
+    }
+
+    optional<FeatureIdentifier> getID() const override {
+        return feature.id;
     }
 
     GeometryCollection getGeometries() const override {
@@ -80,11 +85,33 @@ GeoJSONTile::GeoJSONTile(const OverscaledTileID& overscaledTileID,
                          const style::UpdateParameters& parameters)
     : GeometryTile(overscaledTileID, sourceID_, parameters) {
 }
-    
+
 void GeoJSONTile::updateData(const mapbox::geometry::feature_collection<int16_t>& features) {
     setData(std::make_unique<GeoJSONTileData>(features));
 }
 
 void GeoJSONTile::setNecessity(Necessity) {}
+    
+void GeoJSONTile::querySourceFeatures(
+    std::vector<Feature>& result,
+    const style::SourceQueryOptions& options) {
+    
+    // Ignore the sourceLayer, there is only one
+    auto layer = getData()->getLayer({});
+    
+    if (layer) {
+        auto featureCount = layer->featureCount();
+        for (std::size_t i = 0; i < featureCount; i++) {
+            auto feature = layer->getFeature(i);
+            
+            // Apply filter, if any
+            if (options.filter && !(*options.filter)(*feature)) {
+                continue;
+            }
+            
+            result.push_back(convertFeature(*feature, id.canonical));
+        }
+    }
+}
 
 } // namespace mbgl

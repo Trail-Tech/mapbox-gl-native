@@ -1,8 +1,10 @@
 #include <mbgl/renderer/fill_bucket.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
 #include <mbgl/renderer/painter.hpp>
 #include <mbgl/programs/fill_program.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mbgl/renderer/bucket_parameters.hpp>
+#include <mbgl/style/layers/fill_layer_impl.hpp>
+#include <mbgl/renderer/render_fill_layer.hpp>
+#include <mbgl/util/math.hpp>
 
 #include <mapbox/earcut.hpp>
 
@@ -26,7 +28,19 @@ using namespace style;
 
 struct GeometryTooLongException : std::exception {};
 
-void FillBucket::addGeometry(const GeometryCollection& geometry) {
+FillBucket::FillBucket(const BucketParameters& parameters, const std::vector<const RenderLayer*>& layers) {
+    for (const auto& layer : layers) {
+        paintPropertyBinders.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(layer->getID()),
+            std::forward_as_tuple(
+                layer->as<RenderFillLayer>()->evaluated,
+                parameters.tileID.overscaledZ));
+    }
+}
+
+void FillBucket::addFeature(const GeometryTileFeature& feature,
+                            const GeometryCollection& geometry) {
     for (auto& polygon : classifyRings(geometry)) {
         // Optimize polygons with many interior rings for earcut tesselation.
         limitHoles(polygon, 500);
@@ -55,11 +69,11 @@ void FillBucket::addGeometry(const GeometryCollection& geometry) {
             assert(lineSegment.vertexLength <= std::numeric_limits<uint16_t>::max());
             uint16_t lineIndex = lineSegment.vertexLength;
 
-            vertices.emplace_back(FillAttributes::vertex(ring[0]));
+            vertices.emplace_back(FillProgram::layoutVertex(ring[0]));
             lines.emplace_back(lineIndex + nVertices - 1, lineIndex);
 
             for (uint32_t i = 1; i < nVertices; i++) {
-                vertices.emplace_back(FillAttributes::vertex(ring[i]));
+                vertices.emplace_back(FillProgram::layoutVertex(ring[i]));
                 lines.emplace_back(lineIndex + i - 1, lineIndex + i);
             }
 
@@ -89,6 +103,10 @@ void FillBucket::addGeometry(const GeometryCollection& geometry) {
         triangleSegment.vertexLength += totalVertices;
         triangleSegment.indexLength += nIndicies;
     }
+
+    for (auto& pair : paintPropertyBinders) {
+        pair.second.populateVertexVectors(feature, vertices.vertexSize());
+    }
 }
 
 void FillBucket::upload(gl::Context& context) {
@@ -96,19 +114,32 @@ void FillBucket::upload(gl::Context& context) {
     lineIndexBuffer = context.createIndexBuffer(std::move(lines));
     triangleIndexBuffer = context.createIndexBuffer(std::move(triangles));
 
-    // From now on, we're going to render during the opaque and translucent pass.
+    for (auto& pair : paintPropertyBinders) {
+        pair.second.upload(context);
+    }
+
     uploaded = true;
 }
 
 void FillBucket::render(Painter& painter,
                         PaintParameters& parameters,
-                        const Layer& layer,
+                        const RenderLayer& layer,
                         const RenderTile& tile) {
-    painter.renderFill(parameters, *this, *layer.as<FillLayer>(), tile);
+    painter.renderFill(parameters, *this, *layer.as<RenderFillLayer>(), tile);
 }
 
 bool FillBucket::hasData() const {
     return !triangleSegments.empty() || !lineSegments.empty();
+}
+
+float FillBucket::getQueryRadius(const RenderLayer& layer) const {
+    if (!layer.is<RenderFillLayer>()) {
+        return 0;
+    }
+
+    const std::array<float, 2>& translate = layer.as<RenderFillLayer>()->evaluated.get<FillTranslate>();
+    return util::length(translate[0], translate[1]);
+
 }
 
 } // namespace mbgl

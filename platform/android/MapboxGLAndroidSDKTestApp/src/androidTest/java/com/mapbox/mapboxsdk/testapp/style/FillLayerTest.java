@@ -1,16 +1,28 @@
-package com.mapbox.mapboxsdk.testapp.style;
 // This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make android-style-code`.
+
+package com.mapbox.mapboxsdk.testapp.style;
 
 import android.graphics.Color;
 import android.support.test.espresso.Espresso;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
+import timber.log.Timber;
 
 import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.style.functions.CompositeFunction;
+import com.mapbox.mapboxsdk.style.functions.CameraFunction;
+import com.mapbox.mapboxsdk.style.functions.SourceFunction;
+import com.mapbox.mapboxsdk.style.functions.stops.CategoricalStops;
+import com.mapbox.mapboxsdk.style.functions.stops.ExponentialStops;
+import com.mapbox.mapboxsdk.style.functions.stops.IdentityStops;
+import com.mapbox.mapboxsdk.style.functions.stops.IntervalStops;
+import com.mapbox.mapboxsdk.style.functions.stops.Stop;
+import com.mapbox.mapboxsdk.style.functions.stops.Stops;
 import com.mapbox.mapboxsdk.style.layers.FillLayer;
 import com.mapbox.mapboxsdk.testapp.R;
 import com.mapbox.mapboxsdk.testapp.activity.style.RuntimeStyleTestActivity;
 import com.mapbox.mapboxsdk.testapp.utils.OnMapReadyIdlingResource;
+import com.mapbox.mapboxsdk.testapp.activity.BaseActivityTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -18,269 +30,694 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import timber.log.Timber;
+import static com.mapbox.mapboxsdk.style.functions.Function.*;
+import static com.mapbox.mapboxsdk.style.functions.stops.Stop.stop;
+import static com.mapbox.mapboxsdk.style.functions.stops.Stops.*;
+import static org.junit.Assert.*;
+import static com.mapbox.mapboxsdk.style.layers.Property.*;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.*;
 
-import static com.mapbox.mapboxsdk.style.layers.Property.FILL_TRANSLATE_ANCHOR_MAP;
-import static com.mapbox.mapboxsdk.style.layers.Property.NONE;
-import static com.mapbox.mapboxsdk.style.layers.Property.VISIBLE;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillAntialias;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillColor;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillOpacity;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillOutlineColor;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillPattern;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillTranslate;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.fillTranslateAnchor;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import com.mapbox.mapboxsdk.style.layers.TransitionOptions;
+import com.mapbox.mapboxsdk.testapp.activity.espresso.EspressoTestActivity;
 
 /**
  * Basic smoke tests for FillLayer
  */
 @RunWith(AndroidJUnit4.class)
-public class FillLayerTest extends BaseStyleTest {
-
-  @Rule
-  public final ActivityTestRule<RuntimeStyleTestActivity> rule = new ActivityTestRule<>(RuntimeStyleTestActivity.class);
+public class FillLayerTest extends BaseActivityTest {
 
   private FillLayer layer;
 
-  private OnMapReadyIdlingResource idlingResource;
-
-  private MapboxMap mapboxMap;
-
-  @Before
-  public void setup() {
-    idlingResource = new OnMapReadyIdlingResource(rule.getActivity());
-    Espresso.registerIdlingResources(idlingResource);
+  @Override
+  protected Class getActivityClass() {
+    return EspressoTestActivity.class;
   }
 
-  @Test
-  public void testSetVisibility() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
+  private void setupLayer(){
     if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
       Timber.i("Adding layer");
       layer = new FillLayer("my-layer", "composite");
       layer.setSourceLayer("composite");
       mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
+      // Layer reference is now stale, get new reference
       layer = mapboxMap.getLayerAs("my-layer");
     }
-    Timber.i("visibility");
+  }
+
+  @Test
+  public void testSetVisibility() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("Visibility");
     assertNotNull(layer);
 
-    //Get initial
+    // Get initial
     assertEquals(layer.getVisibility().getValue(), VISIBLE);
 
-    //Set
+    // Set
     layer.setProperties(visibility(NONE));
     assertEquals(layer.getVisibility().getValue(), NONE);
   }
 
   @Test
-  public void testFillAntialias() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testSourceLayer() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("SourceLayer");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Get initial
+    assertEquals(layer.getSourceLayer(), "composite");
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+    // Set
+    final String sourceLayer = "test";
+    layer.setSourceLayer(sourceLayer);
+    assertEquals(layer.getSourceLayer(), sourceLayer);
+  }
+
+  @Test
+  public void testFillAntialiasAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-antialias");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillAntialias(true));
     assertEquals((Boolean) layer.getFillAntialias().getValue(), (Boolean) true);
   }
 
   @Test
-  public void testFillOpacity() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testFillAntialiasAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-antialias");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set
+    layer.setProperties(
+      fillAntialias(
+        zoom(
+          interval(
+            stop(2, fillAntialias(true))
+          )
+        )
+      )
+    );
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+    // Verify
+    assertNotNull(layer.getFillAntialias());
+    assertNotNull(layer.getFillAntialias().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillAntialias().getFunction().getClass());
+    assertEquals(IntervalStops.class, layer.getFillAntialias().getFunction().getStops().getClass());
+    assertEquals(1, ((IntervalStops) layer.getFillAntialias().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillOpacityTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacityTransitionOptions");
+    assertNotNull(layer);
+
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setFillOpacityTransition(options);
+    assertEquals(layer.getFillOpacityTransition(), options);
+  }
+
+  @Test
+  public void testFillOpacityAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-opacity");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillOpacity(0.3f));
     assertEquals((Float) layer.getFillOpacity().getValue(), (Float) 0.3f);
   }
 
   @Test
-  public void testFillColor() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testFillOpacityAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacity");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set
+    layer.setProperties(
+      fillOpacity(
+        zoom(
+          exponential(
+            stop(2, fillOpacity(0.3f))
+          ).withBase(0.5f)
+        )
+      )
+    );
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+    // Verify
+    assertNotNull(layer.getFillOpacity());
+    assertNotNull(layer.getFillOpacity().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillOpacity().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getFillOpacity().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getFillOpacity().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getFillOpacity().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillOpacityAsIdentitySourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacity");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOpacity(property("FeaturePropertyA", Stops.<Float>identity()))
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOpacity());
+    assertNotNull(layer.getFillOpacity().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOpacity().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOpacity().getFunction()).getProperty());
+    assertEquals(IdentityStops.class, layer.getFillOpacity().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillOpacityAsExponentialSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacity");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOpacity(
+        property(
+          "FeaturePropertyA",
+          exponential(
+            stop(0.3f, fillOpacity(0.3f))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOpacity());
+    assertNotNull(layer.getFillOpacity().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOpacity().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOpacity().getFunction()).getProperty());
+    assertEquals(ExponentialStops.class, layer.getFillOpacity().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillOpacityAsCategoricalSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacity");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOpacity(
+        property(
+          "FeaturePropertyA",
+          categorical(
+            stop(1.0f, fillOpacity(0.3f))
+          )
+        ).withDefaultValue(fillOpacity(0.3f))
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOpacity());
+    assertNotNull(layer.getFillOpacity().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOpacity().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOpacity().getFunction()).getProperty());
+    assertEquals(CategoricalStops.class, layer.getFillOpacity().getFunction().getStops().getClass());
+    assertNotNull(((SourceFunction) layer.getFillOpacity().getFunction()).getDefaultValue());
+    assertNotNull(((SourceFunction) layer.getFillOpacity().getFunction()).getDefaultValue().getValue());
+    assertEquals(0.3f, ((SourceFunction) layer.getFillOpacity().getFunction()).getDefaultValue().getValue());
+  }
+
+  @Test
+  public void testFillOpacityAsCompositeFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-opacity");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOpacity(
+        composite(
+          "FeaturePropertyA",
+          exponential(
+            stop(0, 0.3f, fillOpacity(0.9f))
+          ).withBase(0.5f)
+        ).withDefaultValue(fillOpacity(0.3f))
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOpacity());
+    assertNotNull(layer.getFillOpacity().getFunction());
+    assertEquals(CompositeFunction.class, layer.getFillOpacity().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((CompositeFunction) layer.getFillOpacity().getFunction()).getProperty());
+    assertEquals(ExponentialStops.class, layer.getFillOpacity().getFunction().getStops().getClass());
+    assertEquals(1, ((ExponentialStops) layer.getFillOpacity().getFunction().getStops()).size());
+
+    ExponentialStops<Stop.CompositeValue<Float, Float>, Float> stops =
+      (ExponentialStops<Stop.CompositeValue<Float, Float>, Float>) layer.getFillOpacity().getFunction().getStops();
+    Stop<Stop.CompositeValue<Float, Float>, Float> stop = stops.iterator().next();
+    assertEquals(0f, stop.in.zoom, 0.001);
+    assertEquals(0.3f, stop.in.value, 0.001f);
+    assertEquals(0.9f, stop.out, 0.001f);
+  }
+
+  @Test
+  public void testFillColorTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-colorTransitionOptions");
+    assertNotNull(layer);
+
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setFillColorTransition(options);
+    assertEquals(layer.getFillColorTransition(), options);
+  }
+
+  @Test
+  public void testFillColorAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillColor("rgba(0, 0, 0, 1)"));
     assertEquals((String) layer.getFillColor().getValue(), (String) "rgba(0, 0, 0, 1)");
   }
 
   @Test
-  public void testFillColorAsInt() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+  public void testFillColorAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set
+    layer.setProperties(
+      fillColor(
+        zoom(
+          exponential(
+            stop(2, fillColor("rgba(0, 0, 0, 1)"))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillColor());
+    assertNotNull(layer.getFillColor().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillColor().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getFillColor().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getFillColor().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getFillColor().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillColorAsIdentitySourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillColor(property("FeaturePropertyA", Stops.<String>identity()))
+    );
+
+    // Verify
+    assertNotNull(layer.getFillColor());
+    assertNotNull(layer.getFillColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillColor().getFunction()).getProperty());
+    assertEquals(IdentityStops.class, layer.getFillColor().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillColorAsExponentialSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillColor(
+        property(
+          "FeaturePropertyA",
+          exponential(
+            stop(Color.RED, fillColor(Color.RED))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillColor());
+    assertNotNull(layer.getFillColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillColor().getFunction()).getProperty());
+    assertEquals(ExponentialStops.class, layer.getFillColor().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillColorAsCategoricalSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillColor(
+        property(
+          "FeaturePropertyA",
+          categorical(
+            stop("valueA", fillColor(Color.RED))
+          )
+        ).withDefaultValue(fillColor(Color.GREEN))
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillColor());
+    assertNotNull(layer.getFillColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillColor().getFunction()).getProperty());
+    assertEquals(CategoricalStops.class, layer.getFillColor().getFunction().getStops().getClass());
+    assertNotNull(((SourceFunction) layer.getFillColor().getFunction()).getDefaultValue());
+    assertNotNull(((SourceFunction) layer.getFillColor().getFunction()).getDefaultValue().getValue());
+    assertEquals(Color.GREEN, (int) ((SourceFunction) layer.getFillColor().getFunction()).getDefaultValue().getColorInt());
+  }
+
+  @Test
+  public void testFillColorAsIntConstant() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-color");
+    assertNotNull(layer);
+
+    // Set and Get
     layer.setProperties(fillColor(Color.RED));
     assertEquals(layer.getFillColorAsInt(), Color.RED);
   }
 
   @Test
-  public void testFillOutlineColor() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testFillOutlineColorTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-outline-colorTransitionOptions");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setFillOutlineColorTransition(options);
+    assertEquals(layer.getFillOutlineColorTransition(), options);
+  }
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+  @Test
+  public void testFillOutlineColorAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-outline-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillOutlineColor("rgba(0, 0, 0, 1)"));
     assertEquals((String) layer.getFillOutlineColor().getValue(), (String) "rgba(0, 0, 0, 1)");
   }
 
   @Test
-  public void testFillOutlineColorAsInt() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+  public void testFillOutlineColorAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-outline-color");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set
+    layer.setProperties(
+      fillOutlineColor(
+        zoom(
+          exponential(
+            stop(2, fillOutlineColor("rgba(0, 0, 0, 1)"))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOutlineColor());
+    assertNotNull(layer.getFillOutlineColor().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillOutlineColor().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getFillOutlineColor().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getFillOutlineColor().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getFillOutlineColor().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillOutlineColorAsIdentitySourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-outline-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOutlineColor(property("FeaturePropertyA", Stops.<String>identity()))
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOutlineColor());
+    assertNotNull(layer.getFillOutlineColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOutlineColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOutlineColor().getFunction()).getProperty());
+    assertEquals(IdentityStops.class, layer.getFillOutlineColor().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillOutlineColorAsExponentialSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-outline-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOutlineColor(
+        property(
+          "FeaturePropertyA",
+          exponential(
+            stop(Color.RED, fillOutlineColor(Color.RED))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOutlineColor());
+    assertNotNull(layer.getFillOutlineColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOutlineColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOutlineColor().getFunction()).getProperty());
+    assertEquals(ExponentialStops.class, layer.getFillOutlineColor().getFunction().getStops().getClass());
+  }
+
+  @Test
+  public void testFillOutlineColorAsCategoricalSourceFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-outline-color");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillOutlineColor(
+        property(
+          "FeaturePropertyA",
+          categorical(
+            stop("valueA", fillOutlineColor(Color.RED))
+          )
+        ).withDefaultValue(fillOutlineColor(Color.GREEN))
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillOutlineColor());
+    assertNotNull(layer.getFillOutlineColor().getFunction());
+    assertEquals(SourceFunction.class, layer.getFillOutlineColor().getFunction().getClass());
+    assertEquals("FeaturePropertyA", ((SourceFunction) layer.getFillOutlineColor().getFunction()).getProperty());
+    assertEquals(CategoricalStops.class, layer.getFillOutlineColor().getFunction().getStops().getClass());
+    assertNotNull(((SourceFunction) layer.getFillOutlineColor().getFunction()).getDefaultValue());
+    assertNotNull(((SourceFunction) layer.getFillOutlineColor().getFunction()).getDefaultValue().getValue());
+    assertEquals(Color.GREEN, (int) ((SourceFunction) layer.getFillOutlineColor().getFunction()).getDefaultValue().getColorInt());
+  }
+
+  @Test
+  public void testFillOutlineColorAsIntConstant() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-outline-color");
+    assertNotNull(layer);
+
+    // Set and Get
     layer.setProperties(fillOutlineColor(Color.RED));
     assertEquals(layer.getFillOutlineColorAsInt(), Color.RED);
   }
 
   @Test
-  public void testFillTranslate() {
-    checkViewIsDisplayed(R.id.mapView);
-
-    mapboxMap = rule.getActivity().getMapboxMap();
-
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
-    Timber.i("fill-translate");
+  public void testFillTranslateTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-translateTransitionOptions");
     assertNotNull(layer);
 
-    //Set and Get
-    layer.setProperties(fillTranslate(new Float[] {0f, 0f}));
-    assertEquals((Float[]) layer.getFillTranslate().getValue(), (Float[]) new Float[] {0f, 0f});
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setFillTranslateTransition(options);
+    assertEquals(layer.getFillTranslateTransition(), options);
   }
 
   @Test
-  public void testFillTranslateAnchor() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testFillTranslateAsConstant() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-translate");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set and Get
+    layer.setProperties(fillTranslate(new Float[]{0f,0f}));
+    assertEquals((Float[]) layer.getFillTranslate().getValue(), (Float[]) new Float[]{0f,0f});
+  }
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+  @Test
+  public void testFillTranslateAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-translate");
+    assertNotNull(layer);
+
+    // Set
+    layer.setProperties(
+      fillTranslate(
+        zoom(
+          exponential(
+            stop(2, fillTranslate(new Float[]{0f,0f}))
+          ).withBase(0.5f)
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillTranslate());
+    assertNotNull(layer.getFillTranslate().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillTranslate().getFunction().getClass());
+    assertEquals(ExponentialStops.class, layer.getFillTranslate().getFunction().getStops().getClass());
+    assertEquals(0.5f, ((ExponentialStops) layer.getFillTranslate().getFunction().getStops()).getBase(), 0.001);
+    assertEquals(1, ((ExponentialStops) layer.getFillTranslate().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillTranslateAnchorAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-translate-anchor");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillTranslateAnchor(FILL_TRANSLATE_ANCHOR_MAP));
     assertEquals((String) layer.getFillTranslateAnchor().getValue(), (String) FILL_TRANSLATE_ANCHOR_MAP);
   }
 
   @Test
-  public void testFillPattern() {
-    checkViewIsDisplayed(R.id.mapView);
+  public void testFillTranslateAnchorAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-translate-anchor");
+    assertNotNull(layer);
 
-    mapboxMap = rule.getActivity().getMapboxMap();
+    // Set
+    layer.setProperties(
+      fillTranslateAnchor(
+        zoom(
+          interval(
+            stop(2, fillTranslateAnchor(FILL_TRANSLATE_ANCHOR_MAP))
+          )
+        )
+      )
+    );
 
-    if ((layer = mapboxMap.getLayerAs("my-layer")) == null) {
-      Timber.i("Adding layer");
-      layer = new FillLayer("my-layer", "composite");
-      layer.setSourceLayer("composite");
-      mapboxMap.addLayer(layer);
-      //Layer reference is now stale, get new reference
-      layer = mapboxMap.getLayerAs("my-layer");
-    }
+    // Verify
+    assertNotNull(layer.getFillTranslateAnchor());
+    assertNotNull(layer.getFillTranslateAnchor().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillTranslateAnchor().getFunction().getClass());
+    assertEquals(IntervalStops.class, layer.getFillTranslateAnchor().getFunction().getStops().getClass());
+    assertEquals(1, ((IntervalStops) layer.getFillTranslateAnchor().getFunction().getStops()).size());
+  }
+
+  @Test
+  public void testFillPatternTransition() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-patternTransitionOptions");
+    assertNotNull(layer);
+
+    // Set and Get
+    TransitionOptions options = new TransitionOptions(300, 100);
+    layer.setFillPatternTransition(options);
+    assertEquals(layer.getFillPatternTransition(), options);
+  }
+
+  @Test
+  public void testFillPatternAsConstant() {
+    validateTestSetup();
+    setupLayer();
     Timber.i("fill-pattern");
     assertNotNull(layer);
 
-    //Set and Get
+    // Set and Get
     layer.setProperties(fillPattern("pedestrian-polygon"));
     assertEquals((String) layer.getFillPattern().getValue(), (String) "pedestrian-polygon");
   }
 
+  @Test
+  public void testFillPatternAsCameraFunction() {
+    validateTestSetup();
+    setupLayer();
+    Timber.i("fill-pattern");
+    assertNotNull(layer);
 
-  @After
-  public void unregisterIntentServiceIdlingResource() {
-    Espresso.unregisterIdlingResources(idlingResource);
+    // Set
+    layer.setProperties(
+      fillPattern(
+        zoom(
+          interval(
+            stop(2, fillPattern("pedestrian-polygon"))
+          )
+        )
+      )
+    );
+
+    // Verify
+    assertNotNull(layer.getFillPattern());
+    assertNotNull(layer.getFillPattern().getFunction());
+    assertEquals(CameraFunction.class, layer.getFillPattern().getFunction().getClass());
+    assertEquals(IntervalStops.class, layer.getFillPattern().getFunction().getStops().getClass());
+    assertEquals(1, ((IntervalStops) layer.getFillPattern().getFunction().getStops()).size());
   }
+
 }

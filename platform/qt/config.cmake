@@ -1,7 +1,7 @@
 include(platform/qt/qt.cmake)
 
 mason_use(sqlite VERSION 3.14.2)
-mason_use(gtest VERSION 1.7.0${MASON_CXXABI_SUFFIX})
+mason_use(gtest VERSION 1.8.0${MASON_CXXABI_SUFFIX})
 
 if(NOT WITH_QT_DECODERS)
     mason_use(libjpeg-turbo VERSION 1.5.0)
@@ -10,7 +10,7 @@ if(NOT WITH_QT_DECODERS)
 endif()
 
 if(NOT WITH_QT_I18N)
-    mason_use(icu VERSION 58.1)
+    mason_use(icu VERSION 58.1-min-size)
 endif()
 
 macro(mbgl_platform_core)
@@ -22,8 +22,6 @@ macro(mbgl_platform_core)
         PUBLIC platform/default
         PRIVATE platform/qt/include
     )
-
-    target_add_mason_package(mbgl-core PRIVATE sqlite)
 
     target_link_libraries(mbgl-core
         ${MBGL_QT_LIBRARIES}
@@ -54,8 +52,6 @@ endmacro()
 
 macro(mbgl_platform_test)
     target_sources(mbgl-test
-        PRIVATE test/src/main.cpp
-        PRIVATE platform/qt/test/qmapboxgl.cpp
         PRIVATE platform/default/mbgl/gl/headless_backend.cpp
         PRIVATE platform/default/mbgl/gl/headless_backend.hpp
         PRIVATE platform/default/mbgl/gl/headless_display.cpp
@@ -63,10 +59,12 @@ macro(mbgl_platform_test)
         PRIVATE platform/default/mbgl/gl/offscreen_view.cpp
         PRIVATE platform/default/mbgl/gl/offscreen_view.hpp
         PRIVATE platform/qt/test/headless_backend_qt.cpp
+        PRIVATE platform/qt/test/main.cpp
+        PRIVATE platform/qt/test/qmapboxgl.cpp
     )
 
     set_source_files_properties(
-        test/src/main.cpp
+        platform/qt/test/main.cpp
         PROPERTIES COMPILE_FLAGS -DWORK_DIRECTORY="${CMAKE_SOURCE_DIR}"
     )
 
@@ -74,7 +72,7 @@ macro(mbgl_platform_test)
 
     target_link_libraries(mbgl-test
         PRIVATE qmapboxgl
-        ${MBGL_QT_LIBRARIES}
+        ${MBGL_QT_TEST_LIBRARIES}
     )
 endmacro()
 

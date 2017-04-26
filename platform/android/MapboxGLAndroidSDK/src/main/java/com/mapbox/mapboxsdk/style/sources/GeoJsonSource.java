@@ -1,17 +1,25 @@
 package com.mapbox.mapboxsdk.style.sources;
 
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.UiThread;
+
+import com.mapbox.mapboxsdk.style.layers.Filter;
 import com.mapbox.services.commons.geojson.Feature;
 import com.mapbox.services.commons.geojson.FeatureCollection;
+import com.mapbox.services.commons.geojson.Geometry;
 
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * A GeoJson source. Exposes a {@link FeatureCollection} from Json.
+ * GeoJson source, allows using FeatureCollections from Json.
  *
  * @see <a href="https://www.mapbox.com/mapbox-gl-style-spec/#sources-geojson">the style specification</a>
  */
+@UiThread
 public class GeoJsonSource extends Source {
 
   /**
@@ -34,7 +42,7 @@ public class GeoJsonSource extends Source {
   }
 
   /**
-   * Create an empty GeoJsonSource with non-default {@link GeoJsonOptions}
+   * Create an empty GeoJsonSource with non-default GeoJsonOptions.
    *
    * @param id      the source id
    * @param options options
@@ -59,7 +67,7 @@ public class GeoJsonSource extends Source {
   }
 
   /**
-   * Create a GeoJsonSource from a raw json string and non-default {@link GeoJsonOptions}
+   * Create a GeoJsonSource from a raw json string and non-default GeoJsonOptions
    *
    * @param id      the source id
    * @param geoJson raw Json body
@@ -85,7 +93,7 @@ public class GeoJsonSource extends Source {
   }
 
   /**
-   * Create a GeoJsonSource from a remote geo json file and non-default {@link GeoJsonOptions}
+   * Create a GeoJsonSource from a remote geo json file and non-default GeoJsonOptions
    *
    * @param id      the source id
    * @param url     remote json file
@@ -97,7 +105,7 @@ public class GeoJsonSource extends Source {
   }
 
   /**
-   * Create a GeoJsonSource from a {@link FeatureCollection}
+   * Create a GeoJsonSource from a FeatureCollection.
    *
    * @param id       the source id
    * @param features the features
@@ -108,7 +116,7 @@ public class GeoJsonSource extends Source {
   }
 
   /**
-   * Create a GeoJsonSource from a {@link FeatureCollection} and non-default {@link GeoJsonOptions}
+   * Create a GeoJsonSource from a FeatureCollection and non-default GeoJsonOptions.
    *
    * @param id       the source id
    * @param features the features
@@ -120,13 +128,76 @@ public class GeoJsonSource extends Source {
   }
 
   /**
+   * Create a GeoJsonSource from a {@link Feature}
+   *
+   * @param id      the source id
+   * @param feature the feature
+   */
+  public GeoJsonSource(String id, Feature feature) {
+    initialize(id, null);
+    setGeoJson(feature);
+  }
+
+  /**
+   * Create a GeoJsonSource from a {@link Feature} and non-default {@link GeoJsonOptions}
+   *
+   * @param id      the source id
+   * @param feature the feature
+   * @param options options
+   */
+  public GeoJsonSource(String id, Feature feature, GeoJsonOptions options) {
+    initialize(id, options);
+    setGeoJson(feature);
+  }
+
+  /**
+   * Create a GeoJsonSource from a {@link Geometry}
+   *
+   * @param id       the source id
+   * @param geometry the geometry
+   */
+  public GeoJsonSource(String id, Geometry geometry) {
+    initialize(id, null);
+    setGeoJson(geometry);
+  }
+
+  /**
+   * Create a GeoJsonSource from a {@link Geometry} and non-default {@link GeoJsonOptions}
+   *
+   * @param id       the source id
+   * @param geometry the geometry
+   * @param options  options
+   */
+  public GeoJsonSource(String id, Geometry geometry, GeoJsonOptions options) {
+    initialize(id, options);
+    setGeoJson(geometry);
+  }
+
+  /**
+   * Updates the GeoJson with a single feature
+   *
+   * @param feature the GeoJSON {@link Feature} to set
+   */
+  public void setGeoJson(Feature feature) {
+    nativeSetFeature(feature);
+  }
+
+  /**
+   * Updates the GeoJson with a single geometry
+   *
+   * @param geometry the GeoJSON {@link Geometry} to set
+   */
+  public void setGeoJson(Geometry<?> geometry) {
+    nativeSetGeometry(geometry);
+  }
+
+  /**
    * Updates the GeoJson
    *
-   * @param features the GeoJSON {@link FeatureCollection}
+   * @param features the GeoJSON FeatureCollection
    */
   public void setGeoJson(FeatureCollection features) {
-    checkValidity();
-    setGeoJson(features.toJson());
+    nativeSetFeatureCollection(features);
   }
 
   /**
@@ -135,8 +206,7 @@ public class GeoJsonSource extends Source {
    * @param json the raw GeoJson FeatureCollection string
    */
   public void setGeoJson(String json) {
-    checkValidity();
-    setRawJson(json);
+    nativeSetGeoJsonString(json);
   }
 
   /**
@@ -145,7 +215,6 @@ public class GeoJsonSource extends Source {
    * @param url the GeoJSON FeatureCollection url
    */
   public void setUrl(URL url) {
-    checkValidity();
     setUrl(url.toExternalForm());
   }
 
@@ -155,23 +224,34 @@ public class GeoJsonSource extends Source {
    * @param url the GeoJSON FeatureCollection url
    */
   public void setUrl(String url) {
-    checkValidity();
     nativeSetUrl(url);
   }
 
-  protected void setRawJson(String geoJson) {
-    //Wrap the String in a map as an Object is expected by the
-    //style conversion template
-    HashMap<String, String> wrapper = new HashMap<>();
-    wrapper.put("data", geoJson);
-    nativeSetGeoJson(wrapper);
+  /**
+   * Queries the source for features.
+   *
+   * @param filter an optional filter statement to filter the returned Features
+   * @return the features
+   */
+  @NonNull
+  public List<Feature> querySourceFeatures(@Nullable Filter.Statement filter) {
+    Feature[] features = querySourceFeatures(filter != null ? filter.toArray() : null);
+    return features != null ? Arrays.asList(features) : new ArrayList<Feature>();
   }
 
   protected native void initialize(String layerId, Object options);
 
   protected native void nativeSetUrl(String url);
 
-  private native void nativeSetGeoJson(Object geoJson);
+  private native void nativeSetGeoJsonString(String geoJson);
+
+  private native void nativeSetFeatureCollection(FeatureCollection geoJson);
+
+  private native void nativeSetFeature(Feature feature);
+
+  private native void nativeSetGeometry(Geometry<?> geometry);
+
+  private native Feature[] querySourceFeatures(Object[] filter);
 
   @Override
   protected native void finalize() throws Throwable;

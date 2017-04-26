@@ -7,6 +7,7 @@
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/map/transform.hpp>
 #include <mbgl/style/style.hpp>
+#include <mbgl/style/query.hpp>
 #include <mbgl/style/update_parameters.hpp>
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/renderer/symbol_bucket.hpp>
@@ -25,7 +26,7 @@ public:
     util::RunLoop loop;
     ThreadPool threadPool { 1 };
     AnnotationManager annotationManager { 1.0 };
-    style::Style style { fileSource, 1.0 };
+    style::Style style { threadPool, fileSource, 1.0 };
     Tileset tileset { { "https://example.com" }, { 0, 22 }, "none" };
 
     style::UpdateParameters updateParameters {
@@ -45,13 +46,17 @@ TEST(VectorTile, setError) {
     VectorTile tile(OverscaledTileID(0, 0, 0), "source", test.updateParameters, test.tileset);
     tile.setError(std::make_exception_ptr(std::runtime_error("test")));
     EXPECT_FALSE(tile.isRenderable());
+    EXPECT_TRUE(tile.isLoaded());
+    EXPECT_TRUE(tile.isComplete());
 }
 
 TEST(VectorTile, onError) {
     VectorTileTest test;
     VectorTile tile(OverscaledTileID(0, 0, 0), "source", test.updateParameters, test.tileset);
     tile.onError(std::make_exception_ptr(std::runtime_error("test")));
-    EXPECT_TRUE(tile.isRenderable());
+    EXPECT_FALSE(tile.isRenderable());
+    EXPECT_TRUE(tile.isLoaded());
+    EXPECT_TRUE(tile.isComplete());
 }
 
 TEST(VectorTile, Issue7615) {
@@ -60,8 +65,12 @@ TEST(VectorTile, Issue7615) {
 
     style::SymbolLayer symbolLayer("symbol", "source");
     auto symbolBucket = std::make_shared<SymbolBucket>(
-        MapMode::Continuous, style::SymbolLayoutProperties::Evaluated(), false, false);
-
+        style::SymbolLayoutProperties::PossiblyEvaluated(),
+        std::map<
+            std::string,
+            std::pair<style::IconPaintProperties::Evaluated, style::TextPaintProperties::Evaluated>>(),
+        16.0f, 1.0f, 0.0f, false, false);
+    
     // Simulate placement of a symbol layer.
     tile.onPlacement(GeometryTile::PlacementResult {
         {{
@@ -80,5 +89,14 @@ TEST(VectorTile, Issue7615) {
         0
     });
 
-    EXPECT_EQ(symbolBucket.get(), tile.getBucket(symbolLayer));
+    EXPECT_EQ(symbolBucket.get(), tile.getBucket(*symbolLayer.baseImpl->createRenderLayer()));
+}
+
+TEST(VectorTile, Issue8542) {
+    VectorTileTest test;
+    VectorTile tile(OverscaledTileID(0, 0, 0), "source", test.updateParameters, test.tileset);
+
+    // Query before data is set
+    std::vector<Feature> result;
+    tile.querySourceFeatures(result, { { {"layer"} }, {} });
 }

@@ -21,11 +21,12 @@ namespace style {
 namespace conversion {
 
 template <>
-Result<GeoJSON> convertGeoJSON(const JSValue& value) {
+optional<GeoJSON> convertGeoJSON(const JSValue& value, Error& error) {
     try {
         return mapbox::geojson::convert(value);
     } catch (const std::exception& ex) {
-        return Error{ ex.what() };
+        error = { ex.what() };
+        return {};
     }
 }
 } // namespace conversion
@@ -39,7 +40,7 @@ GeoJSONSource::Impl::~Impl() = default;
 void GeoJSONSource::Impl::setURL(std::string url_) {
     url = std::move(url_);
 
-    //Signal that the source description needs a reload
+    // Signal that the source description needs a reload
     if (loaded || req) {
         loaded = false;
         req.reset();
@@ -57,7 +58,7 @@ void GeoJSONSource::Impl::setGeoJSON(const GeoJSON& geoJSON) {
     _setGeoJSON(geoJSON);
 }
 
-//Private implementation
+// Private implementation
 void GeoJSONSource::Impl::_setGeoJSON(const GeoJSON& geoJSON) {
     double scale = util::EXTENT / util::tileSize;
 
@@ -152,10 +153,11 @@ void GeoJSONSource::Impl::loadDescription(FileSource& fileSource) {
 
             invalidateTiles();
 
-            conversion::Result<GeoJSON> geoJSON = conversion::convertGeoJSON<JSValue>(d);
+            conversion::Error error;
+            optional<GeoJSON> geoJSON = conversion::convertGeoJSON<JSValue>(d, error);
             if (!geoJSON) {
                 Log::Error(Event::ParseStyle, "Failed to parse GeoJSON data: %s",
-                           geoJSON.error().message.c_str());
+                           error.message.c_str());
                 // Create an empty GeoJSON VT object to make sure we're not infinitely waiting for
                 // tiles to load.
                 _setGeoJSON(GeoJSON{ FeatureCollection{} });
@@ -169,9 +171,11 @@ void GeoJSONSource::Impl::loadDescription(FileSource& fileSource) {
     });
 }
 
-Range<uint8_t> GeoJSONSource::Impl::getZoomRange() {
-    assert(loaded);
-    return { 0, options.maxzoom };
+optional<Range<uint8_t>> GeoJSONSource::Impl::getZoomRange() const {
+    if (loaded) {
+        return { { 0, options.maxzoom }};
+    }
+    return {};
 }
 
 std::unique_ptr<Tile> GeoJSONSource::Impl::createTile(const OverscaledTileID& tileID,

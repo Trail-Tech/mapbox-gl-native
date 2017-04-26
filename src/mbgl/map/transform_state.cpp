@@ -27,6 +27,9 @@ void TransformState::matrixFor(mat4& matrix, const UnwrappedTileID& tileID) cons
 }
 
 void TransformState::getProjMatrix(mat4& projMatrix) const {
+    if (size.isEmpty()) {
+        return;
+    }
 
      // Find the distance from the center point [width/2, height/2] to the
     // center top point [width/2, 0] in Z units, using the law of sines.
@@ -133,8 +136,15 @@ double TransformState::getZoomFraction() const {
     return getZoom() - getIntegerZoom();
 }
 
-double TransformState::getScale() const {
-    return scale;
+#pragma mark - Bounds
+
+void TransformState::setLatLngBounds(const LatLngBounds& bounds_) {
+    bounds = bounds_;
+    setLatLngZoom(getLatLng(LatLng::Unwrapped), getZoom());
+}
+
+LatLngBounds TransformState::getLatLngBounds() const {
+    return bounds;
 }
 
 void TransformState::setMinZoom(const double minZoom) {
@@ -162,6 +172,25 @@ double TransformState::getMaxZoom() const {
     return scaleZoom(max_scale);
 }
 
+void TransformState::setMinPitch(double minPitch) {
+    if (minPitch <= getMaxPitch()) {
+        min_pitch = minPitch;
+    }
+}
+
+double TransformState::getMinPitch() const {
+    return min_pitch;
+}
+
+void TransformState::setMaxPitch(double maxPitch) {
+    if (maxPitch >= getMinPitch()) {
+        max_pitch = maxPitch;
+    }
+}
+
+double TransformState::getMaxPitch() const {
+    return max_pitch;
+}
 
 #pragma mark - Rotation
 
@@ -216,7 +245,7 @@ double TransformState::scaleZoom(double s) const {
 }
 
 ScreenCoordinate TransformState::latLngToScreenCoordinate(const LatLng& latLng) const {
-    if (!size) {
+    if (size.isEmpty()) {
         return {};
     }
 
@@ -229,7 +258,7 @@ ScreenCoordinate TransformState::latLngToScreenCoordinate(const LatLng& latLng) 
 }
 
 LatLng TransformState::screenCoordinateToLatLng(const ScreenCoordinate& point, LatLng::WrapMode wrapMode) const {
-    if (!size) {
+    if (size.isEmpty()) {
         return {};
     }
 
@@ -319,16 +348,18 @@ void TransformState::moveLatLng(const LatLng& latLng, const ScreenCoordinate& an
 }
 
 void TransformState::setLatLngZoom(const LatLng &latLng, double zoom) {
+    const LatLng constrained = bounds.constrain(latLng);
+
     double newScale = zoomScale(zoom);
     const double newWorldSize = newScale * util::tileSize;
     Bc = newWorldSize / util::DEGREES_MAX;
     Cc = newWorldSize / util::M2PI;
 
     const double m = 1 - 1e-15;
-    const double f = util::clamp(std::sin(util::DEG2RAD * latLng.latitude), -m, m);
+    const double f = util::clamp(std::sin(util::DEG2RAD * constrained.latitude()), -m, m);
 
     ScreenCoordinate point = {
-        -latLng.longitude * Bc,
+        -constrained.longitude() * Bc,
         0.5 * Cc * std::log((1 + f) / (1 - f)),
     };
     setScalePoint(newScale, point);

@@ -4,12 +4,13 @@
 #include <mbgl/renderer/render_tile.hpp>
 #include <mbgl/renderer/painter.hpp>
 #include <mbgl/style/update_parameters.hpp>
-#include <mbgl/style/query_parameters.hpp>
 #include <mbgl/text/placement_config.hpp>
 #include <mbgl/util/logging.hpp>
 #include <mbgl/math/clamp.hpp>
 #include <mbgl/util/tile_cover.hpp>
 #include <mbgl/util/enum.hpp>
+#include <mbgl/map/query.hpp>
+#include <mbgl/style/query.hpp>
 
 #include <mbgl/algorithm/update_renderables.hpp>
 #include <mbgl/algorithm/generate_clip_ids.hpp>
@@ -43,6 +44,10 @@ bool Source::Impl::isLoaded() const {
     }
 
     return true;
+}
+    
+void Source::Impl::detach() {
+    invalidateTiles();
 }
 
 void Source::Impl::invalidateTiles() {
@@ -86,15 +91,15 @@ void Source::Impl::updateTiles(const UpdateParameters& parameters) {
     }
 
     const uint16_t tileSize = getTileSize();
-    const Range<uint8_t> zoomRange = getZoomRange();
+    const optional<Range<uint8_t>> zoomRange = getZoomRange();
 
     // Determine the overzooming/underzooming amounts and required tiles.
     int32_t overscaledZoom = util::coveringZoomLevel(parameters.transformState.getZoom(), type, tileSize);
     int32_t tileZoom = overscaledZoom;
 
     std::vector<UnwrappedTileID> idealTiles;
-    if (overscaledZoom >= zoomRange.min) {
-        int32_t idealZoom = std::min<int32_t>(zoomRange.max, overscaledZoom);
+    if (overscaledZoom >= zoomRange->min) {
+        int32_t idealZoom = std::min<int32_t>(zoomRange->max, overscaledZoom);
 
         // Make sure we're not reparsing overzoomed raster tiles.
         if (type == SourceType::Raster) {
@@ -137,12 +142,12 @@ void Source::Impl::updateTiles(const UpdateParameters& parameters) {
 
     renderTiles.clear();
     algorithm::updateRenderables(getTileFn, createTileFn, retainTileFn, renderTileFn,
-                                 idealTiles, zoomRange, tileZoom);
+                                 idealTiles, *zoomRange, tileZoom);
 
-    if (type != SourceType::Annotations && cache.getSize() == 0) {
+    if (type != SourceType::Annotations) {
         size_t conservativeCacheSize =
-            std::max((float)parameters.transformState.getSize().width / util::tileSize, 1.0f) *
-            std::max((float)parameters.transformState.getSize().height / util::tileSize, 1.0f) *
+            std::max((float)parameters.transformState.getSize().width / tileSize, 1.0f) *
+            std::max((float)parameters.transformState.getSize().height / tileSize, 1.0f) *
             (parameters.transformState.getMaxZoom() - parameters.transformState.getMinZoom() + 1) *
             0.5;
         cache.setSize(conservativeCacheSize);
@@ -186,12 +191,6 @@ void Source::Impl::removeTiles() {
     }
 }
 
-void Source::Impl::updateSymbolDependentTiles() {
-    for (auto& pair : tiles) {
-        pair.second->symbolDependenciesChanged();
-    }
-}
-
 void Source::Impl::reloadTiles() {
     cache.clear();
 
@@ -200,26 +199,27 @@ void Source::Impl::reloadTiles() {
     }
 }
 
-std::unordered_map<std::string, std::vector<Feature>> Source::Impl::queryRenderedFeatures(const QueryParameters& parameters) const {
+std::unordered_map<std::string, std::vector<Feature>> Source::Impl::queryRenderedFeatures(const ScreenLineString& geometry,
+                                           const TransformState& transformState,
+                                           const RenderedQueryOptions& options) const {
     std::unordered_map<std::string, std::vector<Feature>> result;
-    if (renderTiles.empty() || parameters.geometry.empty()) {
+    if (renderTiles.empty() || geometry.empty()) {
         return result;
     }
 
     LineString<double> queryGeometry;
 
-    for (const auto& p : parameters.geometry) {
+    for (const auto& p : geometry) {
         queryGeometry.push_back(TileCoordinate::fromScreenCoordinate(
-            parameters.transformState, 0, { p.x, parameters.transformState.getSize().height - p.y }).p);
+            transformState, 0, { p.x, transformState.getSize().height - p.y }).p);
     }
 
     mapbox::geometry::box<double> box = mapbox::geometry::envelope(queryGeometry);
 
 
     auto sortRenderTiles = [](const RenderTile& a, const RenderTile& b) {
-        return a.id.canonical.z != b.id.canonical.z ? a.id.canonical.z < b.id.canonical.z :
-               a.id.canonical.y != b.id.canonical.y ? a.id.canonical.y < b.id.canonical.y :
-               a.id.wrap != b.id.wrap ? a.id.wrap < b.id.wrap : a.id.canonical.x < b.id.canonical.x;
+        return std::tie(a.id.canonical.z, a.id.canonical.y, a.id.wrap, a.id.canonical.x) <
+            std::tie(b.id.canonical.z, b.id.canonical.y, b.id.wrap, b.id.canonical.x);
     };
     std::vector<std::reference_wrapper<const RenderTile>> sortedTiles;
     std::transform(renderTiles.cbegin(), renderTiles.cend(), std::back_inserter(sortedTiles),
@@ -246,8 +246,25 @@ std::unordered_map<std::string, std::vector<Feature>> Source::Impl::queryRendere
 
         renderTile.tile.queryRenderedFeatures(result,
                                               tileSpaceQueryGeometry,
-                                              parameters.transformState,
-                                              parameters.layerIDs);
+                                              transformState,
+                                              options);
+    }
+
+    return result;
+}
+
+std::vector<Feature> Source::Impl::querySourceFeatures(const SourceQueryOptions& options) {
+
+    // Only VectorSource and GeoJSON source supported
+    if (type != SourceType::GeoJSON && type != SourceType::Vector) {
+        Log::Warning(Event::General, "Source type not supported");
+        return {};
+    }
+
+    std::vector<Feature> result;
+
+    for (const auto& pair : tiles) {
+        pair.second->querySourceFeatures(result, options);
     }
 
     return result;

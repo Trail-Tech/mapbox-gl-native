@@ -4,18 +4,18 @@
 #include <mbgl/gl/texture.hpp>
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/optional.hpp>
-#include <mbgl/sprite/sprite_image.hpp>
+#include <mbgl/style/image.hpp>
 
-#include <atomic>
 #include <string>
 #include <map>
-#include <mutex>
-#include <unordered_set>
+#include <set>
+#include <unordered_map>
 #include <array>
 #include <memory>
 
 namespace mbgl {
 
+class Scheduler;
 class FileSource;
 class SpriteAtlasObserver;
 
@@ -23,36 +23,45 @@ namespace gl {
 class Context;
 } // namespace gl
 
-class SpriteImage;
-class SpritePosition;
-
-class SpriteAtlasPosition {
-public:
-    std::array<float, 2> size = {{ 0, 0 }};
-    std::array<float, 2> tl = {{ 0, 0 }};
-    std::array<float, 2> br = {{ 0, 0 }};
-};
-
 class SpriteAtlasElement {
 public:
+    SpriteAtlasElement(Rect<uint16_t>, const style::Image&, Size size, float pixelRatio);
+
     Rect<uint16_t> pos;
-    std::shared_ptr<const SpriteImage> spriteImage;
+    bool sdf;
+
     float relativePixelRatio;
+    std::array<float, 2> size;
+    std::array<float, 2> tl;
+    std::array<float, 2> br;
+    float width;
+    float height;
 };
 
-enum class SpritePatternMode : bool {
-    Single = false,
-    Repeating = true,
+class SpriteAtlas;
+
+typedef std::map<std::string,SpriteAtlasElement> IconMap;
+typedef std::set<std::string> IconDependencies;
+typedef std::map<uintptr_t,IconMap> IconAtlasMap;
+typedef std::map<SpriteAtlas*,IconDependencies> IconDependencyMap;
+
+class IconRequestor {
+public:
+    virtual void onIconsAvailable(SpriteAtlas*, IconMap) = 0;
 };
 
 class SpriteAtlas : public util::noncopyable {
 public:
-    using Sprites = std::map<std::string, std::shared_ptr<const SpriteImage>>;
+    using Images = std::map<std::string, std::unique_ptr<style::Image>>;
 
     SpriteAtlas(Size, float pixelRatio);
     ~SpriteAtlas();
 
-    void load(const std::string& url, FileSource&);
+    void load(const std::string& url, Scheduler&, FileSource&);
+
+    void markAsLoaded() {
+        loaded = true;
+    }
 
     bool isLoaded() const {
         return loaded;
@@ -62,31 +71,18 @@ public:
 
     void setObserver(SpriteAtlasObserver*);
 
-    // Adds/replaces a Sprite image.
-    void setSprite(const std::string&, std::shared_ptr<const SpriteImage>);
+    const style::Image* getImage(const std::string&) const;
+    void addImage(const std::string&, std::unique_ptr<style::Image>);
+    void removeImage(const std::string&);
 
-    // Adds/replaces mutliple Sprite images.
-    void setSprites(const Sprites& sprites);
+    void getIcons(IconRequestor& requestor);
+    void removeRequestor(IconRequestor& requestor);
 
-    // Removes a Sprite.
-    void removeSprite(const std::string&);
-
-    // Obtains a Sprite image.
-    std::shared_ptr<const SpriteImage> getSprite(const std::string&);
-
-    // If the sprite is loaded, copies the requsted image from it into the atlas and returns
-    // the resulting icon measurements. If not, returns an empty optional.
-    optional<SpriteAtlasElement> getImage(const std::string& name, SpritePatternMode mode);
-
-    // This function is used for getting the position during render time.
-    optional<SpriteAtlasPosition> getPosition(const std::string& name,
-                                              SpritePatternMode mode = SpritePatternMode::Single);
+    optional<SpriteAtlasElement> getIcon(const std::string& name);
+    optional<SpriteAtlasElement> getPattern(const std::string& name);
 
     // Binds the atlas texture to the GPU, and uploads data if it is out of date.
     void bind(bool linear, gl::Context&, gl::TextureUnit unit);
-
-    // Updates sprites in the atlas texture that may have changed.
-    void updateDirty();
 
     // Uploads the texture to the GPU to be available when we need it. This is a lazy operation;
     // the texture is only bound when the data is out of date (=dirty).
@@ -101,8 +97,12 @@ public:
     }
 
 private:
-    void _setSprite(const std::string&, const std::shared_ptr<const SpriteImage>& = nullptr);
     void emitSpriteLoadedIfComplete();
+
+    // Invoked by SpriteAtlasWorker
+    friend class SpriteAtlasWorker;
+    void onParsed(Images&& result);
+    void onError(std::exception_ptr);
 
     const Size size;
     const float pixelRatio;
@@ -114,35 +114,30 @@ private:
 
     SpriteAtlasObserver* observer = nullptr;
 
-    // Lock for sprites and dirty maps.
-    std::mutex mutex;
+    struct Entry {
+        std::unique_ptr<style::Image> image;
 
-    // Stores all current sprites.
-    Sprites sprites;
-
-    // Stores all Sprite IDs that changed since the last invocation.
-    Sprites dirtySprites;
-
-    struct Holder : private util::noncopyable {
-        Holder(std::shared_ptr<const SpriteImage>, Rect<uint16_t>);
-        Holder(Holder&&);
-        std::shared_ptr<const SpriteImage> spriteImage;
-        const Rect<uint16_t> pos;
+        // One sprite image might be used as both an icon image and a pattern image. If so,
+        // it must have two distinct entries in the texture. The one for the icon image has
+        // a single pixel transparent border, and the one for the pattern image has a single
+        // pixel border wrapped from the opposite side.
+        optional<Rect<uint16_t>> iconRect;
+        optional<Rect<uint16_t>> patternRect;
     };
 
-    using Key = std::pair<std::string, SpritePatternMode>;
+    optional<SpriteAtlasElement> getImage(const std::string& name, optional<Rect<uint16_t>> Entry::*rect);
+    void copy(const Entry&, optional<Rect<uint16_t>> Entry::*rect);
+    
+    IconMap buildIconMap();
 
-    Rect<uint16_t> allocateImage(const SpriteImage&);
-    void copy(const Holder& holder, SpritePatternMode mode);
-
-    std::recursive_mutex mtx;
+    std::unordered_map<std::string, Entry> entries;
     BinPack<uint16_t> bin;
-    std::map<Key, Holder> images;
-    std::unordered_set<std::string> uninitialized;
     PremultipliedImage image;
     mbgl::optional<gl::Texture> texture;
-    std::atomic<bool> dirty;
-    static const int buffer = 1;
+    bool dirty;
+    
+    std::set<IconRequestor*> requestors;
+    IconMap icons;
 };
 
 } // namespace mbgl

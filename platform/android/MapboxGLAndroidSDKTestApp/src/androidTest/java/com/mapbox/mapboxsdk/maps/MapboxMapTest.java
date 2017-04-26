@@ -3,10 +3,8 @@ package com.mapbox.mapboxsdk.maps;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.test.espresso.Espresso;
 import android.support.test.espresso.UiController;
 import android.support.test.espresso.ViewAction;
-import android.support.test.rule.ActivityTestRule;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.annotations.BaseMarkerOptions;
@@ -19,23 +17,19 @@ import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.exceptions.InvalidMarkerPositionException;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.testapp.R;
+import com.mapbox.mapboxsdk.testapp.activity.BaseActivityTest;
 import com.mapbox.mapboxsdk.testapp.activity.espresso.EspressoTestActivity;
-import com.mapbox.mapboxsdk.testapp.utils.OnMapReadyIdlingResource;
 import com.mapbox.mapboxsdk.testapp.utils.TestConstants;
 import com.mapbox.mapboxsdk.testapp.utils.ViewUtils;
 
 import org.hamcrest.Matcher;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import timber.log.Timber;
 
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -52,27 +46,65 @@ import static org.junit.Assert.assertTrue;
  * with the application UI-thread.
  * </p>
  */
-public class MapboxMapTest {
+public class MapboxMapTest extends BaseActivityTest {
 
-  @Rule
-  public final ActivityTestRule<EspressoTestActivity> rule = new ActivityTestRule<>(EspressoTestActivity.class);
-
-  private OnMapReadyIdlingResource idlingResource;
-  private EspressoTestActivity activity;
-
-  @Before
-  public void beforeTest() {
-    activity = rule.getActivity();
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    idlingResource = new OnMapReadyIdlingResource(activity);
-    Espresso.registerIdlingResources(idlingResource);
+  @Override
+  protected Class getActivityClass() {
+    return EspressoTestActivity.class;
   }
 
   @Test
   public void testSanity() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     assertNotNull("mapboxMap should not be null", mapboxMap);
+  }
+
+  //
+  // Style wide transition options
+  //
+
+  @Test
+  public void testTransitionDuration() {
+    validateTestSetup();
+    onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
+      @Override
+      public void onViewAction(UiController uiController, View view) {
+        long transitionDuration = 600;
+        mapboxMap.setTransitionDuration(transitionDuration);
+        assertEquals("TransitionDuration should match", transitionDuration, mapboxMap.getTransitionDuration(), 0);
+      }
+    }));
+  }
+
+  @Test
+  public void testTransitionDelay() {
+    validateTestSetup();
+    onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
+      @Override
+      public void onViewAction(UiController uiController, View view) {
+        long transitionDelay = 50;
+        mapboxMap.setTransitionDelay(transitionDelay);
+        assertEquals("TransitionDelay should match", transitionDelay, mapboxMap.getTransitionDelay(), 0);
+      }
+    }));
+  }
+
+  //
+  // CameraForLatLngBounds
+  //
+  @Test
+  public void testCameraForLatLngBounds() {
+    ViewUtils.checkViewIsDisplayed(R.id.mapView);
+    onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
+      @Override
+      public void onViewAction(UiController uiController, View view) {
+        // set
+        mapboxMap.setLatLngBoundsForCameraTarget(
+          new LatLngBounds.Builder().include(new LatLng()).include(new LatLng(1, 1)).build());
+        // reset
+        mapboxMap.setLatLngBoundsForCameraTarget(null);
+      }
+    }));
   }
 
   //
@@ -81,8 +113,7 @@ public class MapboxMapTest {
 
   @Test
   public void testMinZoom() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -94,8 +125,7 @@ public class MapboxMapTest {
 
   @Test
   public void testMaxZoom() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     final double zoom = 10;
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
@@ -107,9 +137,9 @@ public class MapboxMapTest {
   }
 
   @Test
+  @Ignore
   public void testInitialZoomLevels() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -127,8 +157,7 @@ public class MapboxMapTest {
 
   @Test
   public void testTrackingSettings() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     assertNotNull("TrackingSettings should not be null", mapboxMap.getTrackingSettings());
   }
 
@@ -138,8 +167,7 @@ public class MapboxMapTest {
 
   @Test
   public void testConcurrentInfoWindowEnabled() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -151,8 +179,7 @@ public class MapboxMapTest {
 
   @Test
   public void testConcurrentInfoWindowDisabled() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -164,8 +191,7 @@ public class MapboxMapTest {
 
   @Test
   public void testInfoWindowAdapter() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -189,8 +215,7 @@ public class MapboxMapTest {
   @Test
   @Ignore /* disabled due to enabling permissions during test #7177 */
   public void testMyLocationEnabled() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -203,8 +228,7 @@ public class MapboxMapTest {
   @Test
   @Ignore /* can't create handler inside thread that not called Looper.prepare() */
   public void testMyLocationDisabled() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -220,8 +244,7 @@ public class MapboxMapTest {
 
   @Test
   public void testFpsListener() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -239,8 +262,7 @@ public class MapboxMapTest {
 
   @Test
   public void testInfoWindowClickListener() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -258,8 +280,7 @@ public class MapboxMapTest {
 
   @Test
   public void testInfoWindowCloseListener() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -277,8 +298,7 @@ public class MapboxMapTest {
 
   @Test
   public void testInfoWindowLongClickListener() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -301,8 +321,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddMarker() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -320,8 +339,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddMarkers() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -340,8 +358,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddMarkersEmpty() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -354,8 +371,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddMarkersSingleMarker() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -371,8 +387,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolygon() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -385,8 +400,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddEmptyPolygon() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -399,8 +413,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolygons() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -422,8 +435,7 @@ public class MapboxMapTest {
 
   @Test
   public void addPolygonsEmpty() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -435,8 +447,7 @@ public class MapboxMapTest {
 
   @Test
   public void addPolygonsSingle() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -452,8 +463,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolyline() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -466,8 +476,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddEmptyPolyline() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -480,8 +489,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolylines() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -503,8 +511,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolylinesEmpty() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -516,8 +523,7 @@ public class MapboxMapTest {
 
   @Test
   public void testAddPolylinesSingle() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -533,8 +539,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemoveMarker() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -548,8 +553,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemovePolygon() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -563,8 +567,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemovePolyline() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -578,8 +581,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemoveAnnotation() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -593,8 +595,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemoveAnnotationById() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -609,8 +610,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemoveAnnotations() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -628,8 +628,7 @@ public class MapboxMapTest {
 
   @Test
   public void testClear() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -647,8 +646,7 @@ public class MapboxMapTest {
 
   @Test
   public void testRemoveAnnotationsByList() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -668,8 +666,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetAnnotationById() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -683,8 +680,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetAnnotations() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -695,8 +691,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetMarkers() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -707,8 +702,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetPolygons() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -719,8 +713,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetPolylines() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -731,8 +724,7 @@ public class MapboxMapTest {
 
   @Test
   public void testGetSelectedMarkers() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -743,8 +735,7 @@ public class MapboxMapTest {
 
   @Test
   public void testSelectMarker() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -758,8 +749,7 @@ public class MapboxMapTest {
 
   @Test
   public void testDeselectMarker() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -774,8 +764,7 @@ public class MapboxMapTest {
 
   @Test
   public void testDeselectMarkers() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
-    final MapboxMap mapboxMap = activity.getMapboxMap();
+    validateTestSetup();
     onView(withId(R.id.mapView)).perform(new MapboxMapAction(new InvokeViewAction() {
       @Override
       public void onViewAction(UiController uiController, View view) {
@@ -788,12 +777,6 @@ public class MapboxMapTest {
         assertTrue("Selected markers should be empty", mapboxMap.getSelectedMarkers().isEmpty());
       }
     }));
-  }
-
-  @After
-  public void afterTest() {
-    Timber.e("@After test: unregister idle resource");
-    Espresso.unregisterIdlingResources(idlingResource);
   }
 
   private class MapboxMapAction implements ViewAction {

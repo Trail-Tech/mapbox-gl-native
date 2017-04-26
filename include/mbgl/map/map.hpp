@@ -2,6 +2,7 @@
 
 #include <mbgl/util/optional.hpp>
 #include <mbgl/util/chrono.hpp>
+#include <mbgl/map/map_observer.hpp>
 #include <mbgl/map/mode.hpp>
 #include <mbgl/util/geo.hpp>
 #include <mbgl/util/feature.hpp>
@@ -9,6 +10,8 @@
 #include <mbgl/util/size.hpp>
 #include <mbgl/annotation/annotation.hpp>
 #include <mbgl/style/transition_options.hpp>
+#include <mbgl/map/camera.hpp>
+#include <mbgl/map/query.hpp>
 
 #include <cstdint>
 #include <string>
@@ -22,11 +25,9 @@ class Backend;
 class View;
 class FileSource;
 class Scheduler;
-class SpriteImage;
-struct CameraOptions;
-struct AnimationOptions;
 
 namespace style {
+class Image;
 class Source;
 class Layer;
 } // namespace style
@@ -41,7 +42,8 @@ public:
                  MapMode mapMode = MapMode::Continuous,
                  GLContextMode contextMode = GLContextMode::Unique,
                  ConstrainMode constrainMode = ConstrainMode::HeightOnly,
-                 ViewportMode viewportMode = ViewportMode::Default);
+                 ViewportMode viewportMode = ViewportMode::Default,
+                 const std::string& programCacheDir = "");
     ~Map();
 
     // Register a callback that will get called (on the render thread) when all resources have
@@ -80,48 +82,55 @@ public:
     bool isPanning() const;
 
     // Camera
-    CameraOptions getCameraOptions(optional<EdgeInsets>) const;
+    CameraOptions getCameraOptions(const EdgeInsets&) const;
     void jumpTo(const CameraOptions&);
     void easeTo(const CameraOptions&, const AnimationOptions&);
     void flyTo(const CameraOptions&, const AnimationOptions&);
 
     // Position
-    void moveBy(const ScreenCoordinate&, const Duration& = Duration::zero());
-    void setLatLng(const LatLng&, optional<ScreenCoordinate>, const Duration& = Duration::zero());
-    void setLatLng(const LatLng&, optional<EdgeInsets>, const Duration& = Duration::zero());
-    void setLatLng(const LatLng&, const Duration& = Duration::zero());
-    LatLng getLatLng(optional<EdgeInsets> = {}) const;
-    void resetPosition(optional<EdgeInsets> = {});
+    void moveBy(const ScreenCoordinate&, const AnimationOptions& = {});
+    void setLatLng(const LatLng&, optional<ScreenCoordinate>, const AnimationOptions& = {});
+    void setLatLng(const LatLng&, const EdgeInsets&, const AnimationOptions& = {});
+    void setLatLng(const LatLng&, const AnimationOptions& = {});
+    LatLng getLatLng(const EdgeInsets& = {}) const;
+    void resetPosition(const EdgeInsets& = {});
 
-    // Scale
-    void scaleBy(double ds, optional<ScreenCoordinate> = {}, const Duration& = Duration::zero());
-    void setScale(double scale, optional<ScreenCoordinate> = {}, const Duration& = Duration::zero());
-    double getScale() const;
-    void setZoom(double zoom, const Duration& = Duration::zero());
-    void setZoom(double zoom, optional<EdgeInsets>, const Duration& = Duration::zero());
+    // Zoom
+    void setZoom(double zoom, const AnimationOptions& = {});
+    void setZoom(double zoom, optional<ScreenCoordinate>, const AnimationOptions& = {});
+    void setZoom(double zoom, const EdgeInsets&, const AnimationOptions& = {});
     double getZoom() const;
-    void setLatLngZoom(const LatLng&, double zoom, const Duration& = Duration::zero());
-    void setLatLngZoom(const LatLng&, double zoom, optional<EdgeInsets>, const Duration& = Duration::zero());
-    CameraOptions cameraForLatLngBounds(const LatLngBounds&, optional<EdgeInsets>) const;
-    CameraOptions cameraForLatLngs(const std::vector<LatLng>&, optional<EdgeInsets>) const;
+    void setLatLngZoom(const LatLng&, double zoom, const AnimationOptions& = {});
+    void setLatLngZoom(const LatLng&, double zoom, const EdgeInsets&, const AnimationOptions& = {});
+    CameraOptions cameraForLatLngBounds(const LatLngBounds&, const EdgeInsets&) const;
+    CameraOptions cameraForLatLngs(const std::vector<LatLng>&, const EdgeInsets&) const;
+    LatLngBounds latLngBoundsForCamera(const CameraOptions&) const;
     void resetZoom();
-    void setMinZoom(const double minZoom);
+
+    // Bounds
+    void setLatLngBounds(const LatLngBounds&);
+    LatLngBounds getLatLngBounds() const;
+    void setMinZoom(double);
     double getMinZoom() const;
-    void setMaxZoom(const double maxZoom);
+    void setMaxZoom(double);
     double getMaxZoom() const;
+    void setMinPitch(double);
+    double getMinPitch() const;
+    void setMaxPitch(double);
+    double getMaxPitch() const;
 
     // Rotation
-    void rotateBy(const ScreenCoordinate& first, const ScreenCoordinate& second, const Duration& = Duration::zero());
-    void setBearing(double degrees, const Duration& = Duration::zero());
-    void setBearing(double degrees, optional<ScreenCoordinate>, const Duration& = Duration::zero());
-    void setBearing(double degrees, optional<EdgeInsets>, const Duration& = Duration::zero());
+    void rotateBy(const ScreenCoordinate& first, const ScreenCoordinate& second, const AnimationOptions& = {});
+    void setBearing(double degrees, const AnimationOptions& = {});
+    void setBearing(double degrees, optional<ScreenCoordinate>, const AnimationOptions& = {});
+    void setBearing(double degrees, const EdgeInsets&, const AnimationOptions& = {});
     double getBearing() const;
-    void resetNorth(const Duration& = Milliseconds(500));
-    void resetNorth(optional<EdgeInsets>, const Duration& = Milliseconds(500));
+    void resetNorth(const AnimationOptions& = {{mbgl::Milliseconds(500)}});
+    void resetNorth(const EdgeInsets&, const AnimationOptions& = {{mbgl::Milliseconds(500)}});
 
     // Pitch
-    void setPitch(double pitch, const Duration& = Duration::zero());
-    void setPitch(double pitch, optional<ScreenCoordinate>, const Duration& = Duration::zero());
+    void setPitch(double pitch, const AnimationOptions& = {});
+    void setPitch(double pitch, optional<ScreenCoordinate>, const AnimationOptions& = {});
     double getPitch() const;
 
     // North Orientation
@@ -141,16 +150,13 @@ public:
     Size getSize() const;
 
     // Projection
-    double getMetersPerPixelAtLatitude(double lat, double zoom) const;
-    ProjectedMeters projectedMetersForLatLng(const LatLng&) const;
-    LatLng latLngForProjectedMeters(const ProjectedMeters&) const;
     ScreenCoordinate pixelForLatLng(const LatLng&) const;
     LatLng latLngForPixel(const ScreenCoordinate&) const;
 
     // Annotations
-    void addAnnotationIcon(const std::string&, std::shared_ptr<const SpriteImage>);
-    void removeAnnotationIcon(const std::string&);
-    double getTopOffsetPixelsForAnnotationIcon(const std::string&);
+    void addAnnotationImage(const std::string&, std::unique_ptr<style::Image>);
+    void removeAnnotationImage(const std::string&);
+    double getTopOffsetPixelsForAnnotationImage(const std::string&);
 
     AnnotationID addAnnotation(const Annotation&);
     void updateAnnotation(AnnotationID, const Annotation&);
@@ -168,10 +174,10 @@ public:
     void addLayer(std::unique_ptr<style::Layer>, const optional<std::string>& beforeLayerID = {});
     std::unique_ptr<style::Layer> removeLayer(const std::string& layerID);
 
-    // Add image, bound to the style
-    void addImage(const std::string&, std::unique_ptr<const SpriteImage>);
+    // Images
+    void addImage(const std::string&, std::unique_ptr<style::Image>);
     void removeImage(const std::string&);
-    const SpriteImage* getImage(const std::string&);
+    const style::Image* getImage(const std::string&);
 
     // Defaults
     std::string getStyleName() const;
@@ -181,8 +187,9 @@ public:
     double getDefaultPitch() const;
 
     // Feature queries
-    std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate&, const optional<std::vector<std::string>>& layerIDs = {});
-    std::vector<Feature> queryRenderedFeatures(const ScreenBox&,        const optional<std::vector<std::string>>& layerIDs = {});
+    std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate&, const RenderedQueryOptions& options = {});
+    std::vector<Feature> queryRenderedFeatures(const ScreenBox&,        const RenderedQueryOptions& options = {});
+
     AnnotationIDs queryPointAnnotations(const ScreenBox&);
 
     // Memory

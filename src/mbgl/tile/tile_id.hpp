@@ -108,7 +108,7 @@ inline bool CanonicalTileID::operator!=(const CanonicalTileID& rhs) const {
 }
 
 inline bool CanonicalTileID::operator<(const CanonicalTileID& rhs) const {
-    return z != rhs.z ? z < rhs.z : x != rhs.x ? x < rhs.x : y < rhs.y;
+    return std::tie(z, x, y) < std::tie(rhs.z, rhs.x, rhs.y);
 }
 
 inline bool CanonicalTileID::isChildOf(const CanonicalTileID& parent) const {
@@ -170,7 +170,7 @@ inline bool OverscaledTileID::operator!=(const OverscaledTileID& rhs) const {
 }
 
 inline bool OverscaledTileID::operator<(const OverscaledTileID& rhs) const {
-    return overscaledZ != rhs.overscaledZ ? overscaledZ < rhs.overscaledZ : canonical < rhs.canonical;
+    return std::tie(overscaledZ, canonical) < std::tie(rhs.overscaledZ, rhs.canonical);
 }
 
 inline uint32_t OverscaledTileID::overscaleFactor() const {
@@ -211,7 +211,7 @@ inline bool UnwrappedTileID::operator!=(const UnwrappedTileID& rhs) const {
 }
 
 inline bool UnwrappedTileID::operator<(const UnwrappedTileID& rhs) const {
-    return wrap != rhs.wrap ? wrap < rhs.wrap : canonical < rhs.canonical;
+    return std::tie(wrap, canonical) < std::tie(rhs.wrap, rhs.canonical);
 }
 
 inline bool UnwrappedTileID::isChildOf(const UnwrappedTileID& parent) const {
@@ -252,7 +252,7 @@ template <> struct hash<mbgl::CanonicalTileID> {
         return seed;
     }
 };
-    
+
 template <> struct hash<mbgl::UnwrappedTileID> {
     size_t operator()(const mbgl::UnwrappedTileID &id) const {
         std::size_t seed = 0;
@@ -261,7 +261,7 @@ template <> struct hash<mbgl::UnwrappedTileID> {
         return seed;
     }
 };
-    
+
 template <> struct hash<mbgl::OverscaledTileID> {
     size_t operator()(const mbgl::OverscaledTileID &id) const {
         std::size_t seed = 0;

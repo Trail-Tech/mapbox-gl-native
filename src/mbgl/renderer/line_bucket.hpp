@@ -12,28 +12,38 @@
 
 namespace mbgl {
 
+class BucketParameters;
+class RenderLineLayer;
+
 class LineBucket : public Bucket {
 public:
-    LineBucket(uint32_t overscaling);
-    ~LineBucket() override;
+    LineBucket(const BucketParameters&,
+               const std::vector<const RenderLayer*>&,
+               const style::LineLayoutProperties&);
 
-    void upload(gl::Context&) override;
-    void render(Painter&, PaintParameters&, const style::Layer&, const RenderTile&) override;
+    void addFeature(const GeometryTileFeature&,
+                    const GeometryCollection&) override;
     bool hasData() const override;
 
-    void addGeometry(const GeometryCollection&);
-    void addGeometry(const GeometryCoordinates& line);
+    void upload(gl::Context&) override;
+    void render(Painter&, PaintParameters&, const RenderLayer&, const RenderTile&) override;
 
-    style::LineLayoutProperties::Evaluated layout;
+    float getQueryRadius(const RenderLayer&) const override;
 
-    gl::VertexVector<LineVertex> vertices;
+    style::LineLayoutProperties::PossiblyEvaluated layout;
+
+    gl::VertexVector<LineLayoutVertex> vertices;
     gl::IndexVector<gl::Triangles> triangles;
     gl::SegmentVector<LineAttributes> segments;
 
-    optional<gl::VertexBuffer<LineVertex>> vertexBuffer;
+    optional<gl::VertexBuffer<LineLayoutVertex>> vertexBuffer;
     optional<gl::IndexBuffer<gl::Triangles>> indexBuffer;
 
+    std::map<std::string, LineProgram::PaintPropertyBinders> paintPropertyBinders;
+
 private:
+    void addGeometry(const GeometryCoordinates&, FeatureType);
+
     struct TriangleElement {
         TriangleElement(uint16_t a_, uint16_t b_, uint16_t c_) : a(a_), b(b_), c(c_) {}
         uint16_t a, b, c;
@@ -50,6 +60,8 @@ private:
     std::ptrdiff_t e3;
 
     const uint32_t overscaling;
+
+    float getLineWidth(const RenderLineLayer& layer) const;
 };
 
 } // namespace mbgl

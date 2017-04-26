@@ -1,56 +1,40 @@
 package com.mapbox.mapboxsdk.testapp.activity.userlocation;
 
-import android.Manifest;
 import android.app.Activity;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.IdRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.annotation.UiThread;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-import android.view.MenuItem;
 import android.view.View;
 
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.location.LocationListener;
-import com.mapbox.mapboxsdk.location.LocationServices;
+import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.TrackingSettings;
 import com.mapbox.mapboxsdk.maps.widgets.MyLocationViewSettings;
 import com.mapbox.mapboxsdk.testapp.R;
+import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 
-public class MyLocationTintActivity extends AppCompatActivity implements LocationListener {
+/**
+ * Test activity showcasing how to tint the MyLocationView.
+ */
+public class MyLocationTintActivity extends BaseLocationActivity implements LocationEngineListener {
 
   private MapView mapView;
   private MapboxMap mapboxMap;
   private boolean firstRun;
 
-  private static final int PERMISSIONS_LOCATION = 0;
-
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_my_location_dot_color);
-
-    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-    setSupportActionBar(toolbar);
-
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setDisplayHomeAsUpEnabled(true);
-      actionBar.setDisplayShowHomeEnabled(true);
-    }
 
     mapView = (MapView) findViewById(R.id.mapView);
     mapView.onCreate(savedInstanceState);
@@ -94,9 +78,9 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
             @Override
             public void onClick(View view) {
               myLocationViewSettings.setAccuracyTintColor(
-                ContextCompat.getColor(MyLocationTintActivity.this, R.color.mapbox_green));
+                ContextCompat.getColor(MyLocationTintActivity.this, R.color.mapboxGreen));
               myLocationViewSettings.setForegroundTintColor(
-                ContextCompat.getColor(MyLocationTintActivity.this, R.color.mapbox_green));
+                ContextCompat.getColor(MyLocationTintActivity.this, R.color.mapboxGreen));
               myLocationViewSettings.setBackgroundTintColor(Color.WHITE);
             }
           });
@@ -133,6 +117,11 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
   }
 
   @Override
+  public void onConnected() {
+    // Nothing
+  }
+
+  @Override
   public void onLocationChanged(Location location) {
     if (mapboxMap != null && firstRun) {
       mapboxMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 15));
@@ -144,7 +133,7 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
   protected void onStart() {
     super.onStart();
     mapView.onStart();
-    LocationServices.getLocationServices(this).addLocationListener(this);
+    LocationSource.getLocationEngine(this).addLocationEngineListener(this);
   }
 
   @Override
@@ -162,7 +151,7 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
   @Override
   protected void onStop() {
     super.onStop();
-    LocationServices.getLocationServices(this).removeLocationListener(this);
+    LocationSource.getLocationEngine(this).removeLocationEngineListener(this);
     mapView.onStop();
   }
 
@@ -185,35 +174,7 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
   }
 
   @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    switch (item.getItemId()) {
-      case android.R.id.home:
-        onBackPressed();
-        return true;
-      default:
-        return super.onOptionsItemSelected(item);
-    }
-  }
-
-  @UiThread
-  public void toggleGps(boolean enableGps) {
-    if (enableGps) {
-      if ((ContextCompat.checkSelfPermission(this,
-        Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-        || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-        != PackageManager.PERMISSION_GRANTED)) {
-        ActivityCompat.requestPermissions(this, new String[] {
-          Manifest.permission.ACCESS_COARSE_LOCATION,
-          Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSIONS_LOCATION);
-      } else {
-        enableLocation(true);
-      }
-    } else {
-      enableLocation(false);
-    }
-  }
-
-  private void enableLocation(boolean enabled) {
+  protected void enableLocation(boolean enabled) {
     if (enabled) {
       mapboxMap.setMyLocationEnabled(true);
       if (mapboxMap.getMyLocation() != null) {
@@ -223,15 +184,6 @@ public class MyLocationTintActivity extends AppCompatActivity implements Locatio
       }
     } else {
       mapboxMap.setMyLocationEnabled(false);
-    }
-  }
-
-  @Override
-  public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-    if (requestCode == PERMISSIONS_LOCATION) {
-      if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-        enableLocation(true);
-      }
     }
   }
 

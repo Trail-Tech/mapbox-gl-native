@@ -2,7 +2,7 @@
 #include <mbgl/renderer/paint_parameters.hpp>
 #include <mbgl/renderer/symbol_bucket.hpp>
 #include <mbgl/renderer/render_tile.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/renderer/render_symbol_layer.hpp>
 #include <mbgl/style/layers/symbol_layer_impl.hpp>
 #include <mbgl/text/glyph_atlas.hpp>
 #include <mbgl/sprite/sprite_atlas.hpp>
@@ -20,7 +20,7 @@ using namespace style;
 
 void Painter::renderSymbol(PaintParameters& parameters,
                            SymbolBucket& bucket,
-                           const SymbolLayer& layer,
+                           const RenderSymbolLayer& layer,
                            const RenderTile& tile) {
     if (pass == RenderPass::Opaque) {
         return;
@@ -33,7 +33,10 @@ void Painter::renderSymbol(PaintParameters& parameters,
     auto draw = [&] (auto& program,
                      auto&& uniformValues,
                      const auto& buffers,
-                     const SymbolPropertyValues& values_)
+                     const auto& symbolSizeBinder,
+                     const SymbolPropertyValues& values_,
+                     const auto& binders,
+                     const auto& paintProperties)
     {
         // We clip symbols to their tile extent in still mode.
         const bool needsClipping = frame.mapMode == MapMode::Still;
@@ -50,66 +53,93 @@ void Painter::renderSymbol(PaintParameters& parameters,
             colorModeForRenderPass(),
             std::move(uniformValues),
             *buffers.vertexBuffer,
+            *symbolSizeBinder,
+            values_.layoutSize,
             *buffers.indexBuffer,
-            buffers.segments
+            buffers.segments,
+            binders,
+            paintProperties,
+            state.getZoom()
         );
     };
 
     if (bucket.hasIconData()) {
-        auto values = layer.impl->iconPropertyValues(layout);
+        auto values = layer.iconPropertyValues(layout);
+        auto paintPropertyValues = layer.iconPaintProperties();
 
         SpriteAtlas& atlas = *layer.impl->spriteAtlas;
-        const bool iconScaled = values.paintSize != 1.0f || frame.pixelRatio != atlas.getPixelRatio() || bucket.iconsNeedLinear;
+        const bool iconScaled = layout.get<IconSize>().constantOr(1.0) != 1.0 ||
+            frame.pixelRatio != atlas.getPixelRatio() ||
+            bucket.iconsNeedLinear;
         const bool iconTransformed = values.rotationAlignment == AlignmentType::Map || state.getPitch() != 0;
         atlas.bind(bucket.sdfIcons || state.isChanging() || iconScaled || iconTransformed, context, 0);
 
         const Size texsize = atlas.getSize();
 
         if (bucket.sdfIcons) {
-            if (values.hasHalo()) {
+            if (values.hasHalo) {
                 draw(parameters.programs.symbolIconSDF,
-                     SymbolSDFProgram::haloUniformValues(values, texsize, pixelsToGLUnits, tile, state, frame.pixelRatio),
+                     SymbolSDFIconProgram::uniformValues(false, values, texsize, pixelsToGLUnits, tile, state, SymbolSDFPart::Halo),
                      bucket.icon,
-                     values);
+                     bucket.iconSizeBinder,
+                     values,
+                     bucket.paintPropertyBinders.at(layer.getID()).first,
+                     paintPropertyValues);
             }
 
-            if (values.hasForeground()) {
+            if (values.hasFill) {
                 draw(parameters.programs.symbolIconSDF,
-                     SymbolSDFProgram::foregroundUniformValues(values, texsize, pixelsToGLUnits, tile, state, frame.pixelRatio),
+                     SymbolSDFIconProgram::uniformValues(false, values, texsize, pixelsToGLUnits, tile, state, SymbolSDFPart::Fill),
                      bucket.icon,
-                     values);
+                     bucket.iconSizeBinder,
+                     values,
+                     bucket.paintPropertyBinders.at(layer.getID()).first,
+                     paintPropertyValues);
             }
         } else {
             draw(parameters.programs.symbolIcon,
-                 SymbolIconProgram::uniformValues(values, texsize, pixelsToGLUnits, tile, state),
+                 SymbolIconProgram::uniformValues(false, values, texsize, pixelsToGLUnits, tile, state),
                  bucket.icon,
-                 values);
+                 bucket.iconSizeBinder,
+                 values,
+                 bucket.paintPropertyBinders.at(layer.getID()).first,
+                 paintPropertyValues);
         }
     }
 
     if (bucket.hasTextData()) {
         glyphAtlas->bind(context, 0);
 
-        auto values = layer.impl->textPropertyValues(layout);
+        auto values = layer.textPropertyValues(layout);
+        auto paintPropertyValues = layer.textPaintProperties();
 
         const Size texsize = glyphAtlas->getSize();
 
-        if (values.hasHalo()) {
+        if (values.hasHalo) {
             draw(parameters.programs.symbolGlyph,
-                 SymbolSDFProgram::haloUniformValues(values, texsize, pixelsToGLUnits, tile, state, frame.pixelRatio),
+                 SymbolSDFTextProgram::uniformValues(true, values, texsize, pixelsToGLUnits, tile, state, SymbolSDFPart::Halo),
                  bucket.text,
-                 values);
+                 bucket.textSizeBinder,
+                 values,
+                 bucket.paintPropertyBinders.at(layer.getID()).second,
+                 paintPropertyValues);
         }
 
-        if (values.hasForeground()) {
+        if (values.hasFill) {
             draw(parameters.programs.symbolGlyph,
-                 SymbolSDFProgram::foregroundUniformValues(values, texsize, pixelsToGLUnits, tile, state, frame.pixelRatio),
+                 SymbolSDFTextProgram::uniformValues(true, values, texsize, pixelsToGLUnits, tile, state, SymbolSDFPart::Fill),
                  bucket.text,
-                 values);
+                 bucket.textSizeBinder,
+                 values,
+                 bucket.paintPropertyBinders.at(layer.getID()).second,
+                 paintPropertyValues);
         }
     }
 
     if (bucket.hasCollisionBoxData()) {
+        static const style::PaintProperties<>::Evaluated properties {};
+        static const CollisionBoxProgram::PaintPropertyBinders paintAttributeData(properties, 0);
+
         programs->collisionBox.draw(
             context,
             gl::Lines { 1.0f },
@@ -124,7 +154,10 @@ void Painter::renderSymbol(PaintParameters& parameters,
             },
             *bucket.collisionBox.vertexBuffer,
             *bucket.collisionBox.indexBuffer,
-            bucket.collisionBox.segments
+            bucket.collisionBox.segments,
+            paintAttributeData,
+            properties,
+            state.getZoom()
         );
     }
 }

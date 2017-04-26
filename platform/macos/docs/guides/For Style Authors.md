@@ -1,6 +1,6 @@
 <!--
   This file is generated.
-  Edit platform/darwin/scripts/generate-style-code.js, then run `make style-code-darwin`.
+  Edit platform/darwin/scripts/generate-style-code.js, then run `make darwin-style-code`.
 -->
 # Information for Style Authors
 
@@ -26,6 +26,8 @@ style is present. Standard user interface elements such as toolbars, sidebars,
 and sheets often overlap the map view with a translucent, blurred background, so
 make sure the contents of these elements remain legible with the map view
 underneath.
+If you intend your style to be used in the dark, consider the impact that Night
+Shift may have on your style’s colors.
 
 ### Typography and graphics
 
@@ -96,6 +98,7 @@ In the style specification | In the SDK
 ---------------------------|---------
 class                      | style class
 filter                     | predicate
+function type              | interpolation mode
 id                         | identifier
 image                      | style image
 layer                      | style layer
@@ -115,7 +118,7 @@ In style JSON | In the SDK
 `raster`      | `MGLRasterSource`
 `vector`      | `MGLVectorSource`
 
-`image` and `video` sources are not supported.
+`canvas`, `image`, and `video` sources are not supported.
 
 ### Tile sources
 
@@ -239,10 +242,12 @@ In style JSON | In Objective-C | In Swift
 ## Setting attribute values
 
 Each property representing a layout or paint attribute is set to an
-`MGLStyleValue` object, which is either an `MGLStyleConstantValue` object (for
-constant values) or an `MGLStyleFunction` object (for zoom level functions). The
+`MGLStyleValue` object, which is either an `MGLConstantStyleValue` object (for
+constant values) or an `MGLStyleFunction` object (for style functions). The
 style value object is a container for the raw value or function parameters that
 you want the attribute to be set to.
+
+### Constant style values
 
 In contrast to the JSON type that the style specification defines for each
 layout or paint property, the style value object often contains a more specific
@@ -263,15 +268,49 @@ Array (`-offset`, `-translate`) | `NSValue` containing `CGVector` | `NSValue` co
 Array (`-padding`) | `NSValue.edgeInsetsValue` | `NSValue.edgeInsetsValue`
 
 For padding attributes, note that the arguments to
-`NSEdgeInsetsMake()` in Objective-C and
-`EdgeInsets(top:left:bottom:right:)` in Swift are specified in counterclockwise
-order, in contrast to the clockwise order defined by the style specification.
+`NSEdgeInsetsMake()` in Objective-C and `EdgeInsets(top:left:bottom:right:)` in
+Swift
+are specified in counterclockwise order, in contrast to the clockwise order
+defined by the style specification.
 
 Additionally, on macOS, a screen coordinate of (0, 0) is located at the
 lower-left corner of the screen. Therefore, a positive `CGVector.dy` means an
 offset or translation upward, while a negative `CGVector.dy` means an offset or
 translation downward. This is the reverse of how `CGVector` is interpreted on
 iOS.
+
+### Style functions
+
+A _style function_ allows you to vary the value of a layout or paint attribute
+based on the zoom level, data provided by content sources, or both. For more
+information about style functions, see “[Using Style Functions at Runtime](using-style-functions-at-runtime.html)”.
+
+Each kind of style function is represented by a distinct class, but you
+typically create style functions as you create any other style value, using
+class methods on `MGLStyleValue`:
+
+In style specification     | SDK class                   | SDK factory method
+---------------------------|-----------------------------|-------------------
+zoom function              | `MGLCameraStyleFunction`    | `+[MGLStyleValue valueWithInterpolationMode:cameraStops:options:]`
+property function          | `MGLSourceStyleFunction`    | `+[MGLStyleValue valueWithInterpolationMode:sourceStops:attributeName:options:]`
+zoom-and-property function | `MGLCompositeStyleFunction` | `+[MGLStyleValue valueWithInterpolationMode:compositeStops:attributeName:options:]`
+
+The documentation for each individual style layer property indicates the kinds
+of style functions that are enabled for that property.
+
+When you create a style function, you specify an _interpolation mode_ and a
+series of _stops_. Each stop determines the effective value displayed at a
+particular zoom level (for camera functions) or the effective value on features
+with a particular attribute value in the content source (for source functions).
+The interpolation mode tells the SDK how to calculate the effective value
+between any two stops:
+
+In style specification       | In the SDK
+-----------------------------|-----------
+`exponential`                | `MGLInterpolationModeExponential`
+`interval`                   | `MGLInterpolationModeInterval`
+`categorical`                | `MGLInterpolationModeCategorical`
+`identity`                   | `MGLInterpolationModeIdentity`
 
 ## Filtering sources
 

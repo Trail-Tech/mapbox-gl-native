@@ -4,12 +4,16 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
+import android.support.annotation.UiThread;
 import android.text.TextUtils;
 
 import com.mapbox.mapboxsdk.constants.MapboxConstants;
-import com.mapbox.mapboxsdk.exceptions.InvalidAccessTokenException;
+import com.mapbox.mapboxsdk.exceptions.MapboxConfigurationException;
+import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.net.ConnectivityReceiver;
-import com.mapbox.mapboxsdk.telemetry.MapboxEventManager;
+import com.mapbox.services.android.telemetry.MapboxTelemetry;
+import com.mapbox.services.android.telemetry.location.LocationEngine;
+import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
 
 public final class Mapbox {
 
@@ -28,17 +32,21 @@ public final class Mapbox {
    * @param accessToken Mapbox access token
    * @return the single instance of Mapbox
    */
+  @UiThread
   public static synchronized Mapbox getInstance(@NonNull Context context, @NonNull String accessToken) {
     if (INSTANCE == null) {
       Context appContext = context.getApplicationContext();
       INSTANCE = new Mapbox(appContext, accessToken);
-      MapboxEventManager.getMapboxEventManager().initialize(appContext, accessToken);
+      LocationEngine locationEngine = LocationSource.getLocationEngine(appContext);
+      locationEngine.setPriority(LocationEnginePriority.NO_POWER);
+      MapboxTelemetry.getInstance().initialize(
+        appContext, accessToken, BuildConfig.MAPBOX_EVENTS_USER_AGENT, locationEngine);
       ConnectivityReceiver.instance(appContext);
     }
     return INSTANCE;
   }
 
-  private Mapbox(@NonNull Context context, @NonNull String accessToken) {
+  Mapbox(@NonNull Context context, @NonNull String accessToken) {
     this.context = context;
     this.accessToken = accessToken;
   }
@@ -49,20 +57,30 @@ public final class Mapbox {
    * @return Mapbox Access Token
    */
   public static String getAccessToken() {
+    validateMapbox();
     validateAccessToken();
     return INSTANCE.accessToken;
   }
 
   /**
+   * Runtime validation of Mapbox creation.
+   */
+  private static void validateMapbox() throws MapboxConfigurationException {
+    if (INSTANCE == null) {
+      throw new MapboxConfigurationException();
+    }
+  }
+
+  /**
    * Runtime validation of Access Token.
    *
-   * @throws InvalidAccessTokenException exception thrown when not using a valid accessToken
+   * @throws MapboxConfigurationException exception thrown when not using a valid accessToken
    */
-  private static void validateAccessToken() throws InvalidAccessTokenException {
+  private static void validateAccessToken() throws MapboxConfigurationException {
     String accessToken = INSTANCE.accessToken;
     if (TextUtils.isEmpty(accessToken) || (!accessToken.toLowerCase(MapboxConstants.MAPBOX_LOCALE).startsWith("pk.")
       && !accessToken.toLowerCase(MapboxConstants.MAPBOX_LOCALE).startsWith("sk."))) {
-      throw new InvalidAccessTokenException();
+      throw new MapboxConfigurationException();
     }
   }
 

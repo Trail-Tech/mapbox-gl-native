@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.ViewGroup;
 
 import com.mapbox.mapboxsdk.annotations.Polygon;
 import com.mapbox.mapboxsdk.annotations.PolygonOptions;
@@ -17,9 +16,9 @@ import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.testapp.R;
-import com.mapbox.mapboxsdk.testapp.utils.ToolbarComposer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.BLUE_COLOR;
@@ -28,12 +27,13 @@ import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.C
 import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.NO_ALPHA;
 import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.PARTIAL_ALPHA;
 import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.RED_COLOR;
+import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.STAR_SHAPE_HOLES;
 import static com.mapbox.mapboxsdk.testapp.activity.annotation.PolygonActivity.Config.STAR_SHAPE_POINTS;
 
 /**
- * Activity to test the Polygon annotation API & programmatically creating a MapView.
+ * Test activity to showcase the Polygon annotation API & programmatically creating a MapView.
  * <p>
- * Showcases changing Polygon features as visibility, alpha, color and points.
+ * Shows how to change Polygon features as visibility, alpha, color and points.
  * </p>
  */
 public class PolygonActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -45,13 +45,12 @@ public class PolygonActivity extends AppCompatActivity implements OnMapReadyCall
   private boolean fullAlpha = true;
   private boolean visible = true;
   private boolean color = true;
-  private boolean allPoints;
+  private boolean allPoints = true;
+  private boolean holes = false;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_polygon);
-    ToolbarComposer.initDefaultUpToolbar(this, R.id.toolbar);
 
     // configure inital map state
     MapboxMapOptions options = new MapboxMapOptions()
@@ -72,11 +71,7 @@ public class PolygonActivity extends AppCompatActivity implements OnMapReadyCall
     mapView.onCreate(savedInstanceState);
     mapView.getMapAsync(this);
 
-    // add to layout
-    ViewGroup container = (ViewGroup) findViewById(R.id.container);
-    if (container != null) {
-      container.addView(mapView);
-    }
+    setContentView(mapView);
   }
 
   @Override
@@ -132,28 +127,25 @@ public class PolygonActivity extends AppCompatActivity implements OnMapReadyCall
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
-      case android.R.id.home:
-        onBackPressed();
-        return true;
-
       case R.id.action_id_alpha:
         fullAlpha = !fullAlpha;
         polygon.setAlpha(fullAlpha ? FULL_ALPHA : PARTIAL_ALPHA);
         return true;
-
       case R.id.action_id_visible:
         visible = !visible;
         polygon.setAlpha(visible ? (fullAlpha ? FULL_ALPHA : PARTIAL_ALPHA) : NO_ALPHA);
         return true;
-
       case R.id.action_id_points:
         allPoints = !allPoints;
         polygon.setPoints(allPoints ? STAR_SHAPE_POINTS : BROKEN_SHAPE_POINTS);
         return true;
-
       case R.id.action_id_color:
         color = !color;
         polygon.setFillColor(color ? BLUE_COLOR : RED_COLOR);
+        return true;
+      case R.id.action_id_holes:
+        holes = !holes;
+        polygon.setHoles(holes ? STAR_SHAPE_HOLES : Collections.<List<LatLng>>emptyList());
         return true;
       default:
         return super.onOptionsItemSelected(item);
@@ -194,5 +186,27 @@ public class PolygonActivity extends AppCompatActivity implements OnMapReadyCall
 
     static final List<LatLng> BROKEN_SHAPE_POINTS =
       STAR_SHAPE_POINTS.subList(0, STAR_SHAPE_POINTS.size() - 3);
+
+    static final List<? extends List<LatLng>> STAR_SHAPE_HOLES = new ArrayList<List<LatLng>>() {
+      {
+        add(new ArrayList<>(new ArrayList<LatLng>() {
+          {
+            add(new LatLng(45.521743, -122.669091));
+            add(new LatLng(45.530483, -122.676833));
+            add(new LatLng(45.520483, -122.676833));
+            add(new LatLng(45.521743, -122.669091));
+          }
+        }));
+        add(new ArrayList<>(new ArrayList<LatLng>() {
+          {
+            add(new LatLng(45.529743, -122.662791));
+            add(new LatLng(45.525543, -122.662791));
+            add(new LatLng(45.525543, -122.660));
+            add(new LatLng(45.527743, -122.660));
+            add(new LatLng(45.529743, -122.662791));
+          }
+        }));
+      }
+    };
   }
 }

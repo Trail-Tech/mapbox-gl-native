@@ -1,13 +1,15 @@
 package com.mapbox.mapboxsdk.testapp.activity.annotation;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.support.v7.app.ActionBar;
+import android.support.annotation.DrawableRes;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-
-import timber.log.Timber;
-
-import android.view.MenuItem;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
@@ -20,7 +22,13 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.testapp.R;
+import com.mapbox.mapboxsdk.testapp.utils.ViewToBitmapUtil;
 
+import timber.log.Timber;
+
+/**
+ * Test activity showcasing updating a Marker image when changing zoom levels
+ */
 public class AddRemoveMarkerActivity extends AppCompatActivity {
 
   public static final double THRESHOLD = 5.0;
@@ -40,24 +48,20 @@ public class AddRemoveMarkerActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_add_remove_marker);
 
-    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-    setSupportActionBar(toolbar);
-
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setDisplayHomeAsUpEnabled(true);
-      actionBar.setDisplayShowHomeEnabled(true);
-    }
-
-    final Icon icon1 = IconFactory.getInstance(this).fromResource(R.drawable.ic_arsenal);
-    final Icon icon2 = IconFactory.getInstance(this).fromResource(R.drawable.ic_chelsea);
+    View lowThresholdView = generateView("Low", R.drawable.ic_circle);
+    Bitmap lowThresholdBitmap = ViewToBitmapUtil.convertToBitmap(lowThresholdView);
+    Icon lowThresholdIcon = IconFactory.getInstance(this).fromBitmap(lowThresholdBitmap);
 
     lowThresholdMarker = new MarkerOptions()
-      .icon(icon1)
-      .position(new LatLng(-0.1, 0));
+      .icon(lowThresholdIcon)
+      .position(new LatLng(0.1, 0));
+
+    View highThesholdView = generateView("High", R.drawable.ic_circle);
+    Bitmap highThresholdBitmap = ViewToBitmapUtil.convertToBitmap(highThesholdView);
+    Icon highThresholdIcon = IconFactory.getInstance(this).fromBitmap(highThresholdBitmap);
 
     highThresholdMarker = new MarkerOptions()
-      .icon(icon2)
+      .icon(highThresholdIcon)
       .position(new LatLng(0.1, 0));
 
     mapView = (MapView) findViewById(R.id.mapView);
@@ -76,6 +80,17 @@ public class AddRemoveMarkerActivity extends AppCompatActivity {
         });
       }
     });
+  }
+
+  @SuppressLint("InflateParams")
+  private View generateView(String text, @DrawableRes int drawableRes) {
+    View view = LayoutInflater.from(this).inflate(R.layout.view_custom_marker, null);
+    TextView textView = (TextView) view.findViewById(R.id.textView);
+    textView.setText(text);
+    textView.setTextColor(Color.WHITE);
+    ImageView imageView = (ImageView) view.findViewById(R.id.imageView);
+    imageView.setImageResource(drawableRes);
+    return view;
   }
 
   private void updateZoom(double zoom) {
@@ -169,15 +184,5 @@ public class AddRemoveMarkerActivity extends AppCompatActivity {
   protected void onDestroy() {
     super.onDestroy();
     mapView.onDestroy();
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    switch (item.getItemId()) {
-      case android.R.id.home:
-        onBackPressed();
-        return true;
-    }
-    return super.onOptionsItemSelected(item);
   }
 }
