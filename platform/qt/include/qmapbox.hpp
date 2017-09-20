@@ -6,10 +6,13 @@
 #include <QPair>
 #include <QVariant>
 #include <QString>
+#include <mapbox/geojson.hpp>
 
 // This header follows the Qt coding style: https://wiki.qt.io/Qt_Coding_Style
 
 namespace QMapbox {
+
+using QFeatureCollection = mapbox::geojson::feature_collection;
 
 typedef QPair<double, double> Coordinate;
 typedef QPair<Coordinate, double> CoordinateZoom;

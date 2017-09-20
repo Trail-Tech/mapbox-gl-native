@@ -1206,6 +1206,18 @@ void QMapboxGL::addSource(const QString &id, const QVariantMap &params)
     d_ptr->mapObj->getStyle().addSource(std::move(*source));
 }
 
+void QMapboxGL::addSource(const QString &sourceID, QMapbox::QFeatureCollection &data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = std::make_unique<GeoJSONSource>(sourceID.toStdString());
+    source->setGeoJSON(mbgl::GeoJSON{data});
+
+    d_ptr->mapObj->getStyle().addSource(std::move(source));
+}
+
+
 /*!
     Returns true if the layer with given \a sourceID exists, false otherwise.
 */
@@ -1244,6 +1256,26 @@ void QMapboxGL::updateSource(const QString &id, const QVariantMap &params)
             sourceGeoJSON->setGeoJSON(*result);
         }
     }
+}
+
+void QMapboxGL::updateSource(const QString &sourceID, QMapbox::QFeatureCollection &data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+    if (!source) {
+        addSource(sourceID, data);
+        return;
+    }
+
+    auto sourceGeoJSON = source->as<GeoJSONSource>();
+    if (!sourceGeoJSON) {
+        qWarning() << "Unable to update source: only GeoJSON sources are mutable.";
+        return;
+    }
+
+    sourceGeoJSON->setGeoJSON(mbgl::GeoJSON{data});
 }
 
 /*!

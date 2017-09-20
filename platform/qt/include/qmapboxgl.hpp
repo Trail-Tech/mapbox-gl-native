@@ -201,8 +201,10 @@ public:
     QMargins margins() const;
 
     void addSource(const QString &sourceID, const QVariantMap& params);
+    void addSource(const QString &sourceID, QMapbox::QFeatureCollection &data);
     bool sourceExists(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
+    void updateSource(const QString &sourceID, QMapbox::QFeatureCollection & data);
     void removeSource(const QString &sourceID);
 
     void addImage(const QString &name, const QImage &sprite);
