@@ -21,6 +21,11 @@ void QMapboxGLRendererFrontend::update(std::shared_ptr<mbgl::UpdateParameters> u
     emit updated();
 }
 
+mbgl::Renderer* QMapboxGLRendererFrontend::getRenderer() {
+    assert(renderer);
+    return renderer.get();
+}
+
 void QMapboxGLRendererFrontend::setObserver(mbgl::RendererObserver& observer_) {
     if (!renderer) return;
     

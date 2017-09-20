@@ -22,6 +22,8 @@ public:
 
     void update(std::shared_ptr<mbgl::UpdateParameters>) override;
 
+    mbgl::Renderer* getRenderer();
+
 public slots:
     void render();
 

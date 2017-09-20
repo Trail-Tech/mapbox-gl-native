@@ -20,6 +20,7 @@
 #include <mbgl/style/image.hpp>
 #include <mbgl/renderer/renderer.hpp>
 #include <mbgl/renderer/backend_scope.hpp>
+#include <mbgl/renderer/query.hpp>
 #include <mbgl/storage/network_status.hpp>
 #include <mbgl/util/color.hpp>
 #include <mbgl/util/constants.hpp>
@@ -1212,7 +1213,8 @@ void QMapboxGL::addSource(const QString &sourceID, QMapbox::QFeatureCollection &
     using namespace mbgl::style::conversion;
 
     auto source = std::make_unique<GeoJSONSource>(sourceID.toStdString());
-    source->setGeoJSON(mbgl::GeoJSON{data});
+    auto geojson_data = mbgl::GeoJSON{data};
+    source->setGeoJSON(geojson_data);
 
     d_ptr->mapObj->getStyle().addSource(std::move(source));
 }
@@ -1262,7 +1264,6 @@ void QMapboxGL::updateSource(const QString &sourceID, QMapbox::QFeatureCollectio
 {
     using namespace mbgl::style;
     using namespace mbgl::style::conversion;
-
     auto source = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
     if (!source) {
         addSource(sourceID, data);
@@ -1291,6 +1292,44 @@ void QMapboxGL::removeSource(const QString& id)
         d_ptr->mapObj->getStyle().removeSource(sourceIDStdString);
     }
 }
+
+inline std::vector<std::string> toVector(const QVector<QString>&  array) {
+    std::vector<std::string> vector;
+    int len = array.size();
+    vector.reserve(len);
+
+    for (int i = 0; i < len; i++) {
+        vector.push_back(array.at(i).toStdString());
+    }
+
+    return vector;
+}
+
+
+std::vector<QMapbox::QFeature> QMapboxGL::queryRenderedFeatures(const QPointF & point, const QVector<QString>& layerIDs)
+{
+    mbgl::RenderedQueryOptions options;
+    mbgl::ScreenCoordinate coordinate(point.x(), point.y());
+    mbgl::optional<std::vector<std::string>> layers;
+    if( layerIDs.size() )
+    {
+        layers = toVector(layerIDs);
+    }
+    options.layerIDs = layers;
+    return d_ptr->frontend->getRenderer()->queryRenderedFeatures(coordinate,options);
+}
+
+// Feature queries - might want to move result to QVector to be more Qt like
+std::vector<QMapbox::QFeature>  queryRenderedFeatures(const QRect& rect, const QVector<QString>& layerIDs)
+{
+    Q_UNUSED(rect);
+    Q_UNUSED(layerIDs);
+    qWarning() << "queryRenderedFeatures unimplemented for rectangle query";
+    
+    return std::vector<QMapbox::QFeature>();
+}
+
+
 
 /*!
     Adds a custom layer \a id with the initialization function \a initFn, the
