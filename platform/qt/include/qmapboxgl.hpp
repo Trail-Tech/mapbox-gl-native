@@ -218,8 +218,13 @@ public:
     void addSource(const QString &sourceID, QMapbox::QFeatureCollection &data);
     bool sourceExists(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
-    void updateSource(const QString &sourceID, QMapbox::QFeatureCollection & data);
+    void updateSource(const QString &sourceID, QMapbox::QFeatureCollection &data);
     void removeSource(const QString &sourceID);
+
+// Feature queries - might want to move result to QVector to be more Qt like
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QPointF &, const QVector<QString>& layerIDs = {});
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QRect&,    const QVector<QString>& layerIDs = {});
+
 
     void addImage(const QString &name, const QImage &sprite);
     void removeImage(const QString &name);

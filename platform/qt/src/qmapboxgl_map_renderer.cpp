@@ -30,6 +30,11 @@ void QMapboxGLMapRenderer::updateParameters(std::shared_ptr<mbgl::UpdateParamete
     m_updateParameters = std::move(newParameters);
 }
 
+mbgl::Renderer* QMapboxGLMapRenderer::getRenderer() {
+    assert(m_renderer);
+    return m_renderer.get();
+}
+
 void QMapboxGLMapRenderer::updateFramebuffer(quint32 fbo, const mbgl::Size &size)
 {
     MBGL_VERIFY_THREAD(tid);

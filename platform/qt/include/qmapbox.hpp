@@ -19,6 +19,8 @@
 namespace QMapbox {
 
 using QFeatureCollection = mapbox::geojson::feature_collection;
+using QFeature = mapbox::geojson::feature;
+
 
 typedef QPair<double, double> Coordinate;
 typedef QPair<Coordinate, double> CoordinateZoom;
