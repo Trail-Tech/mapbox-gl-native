@@ -1393,14 +1393,20 @@ std::vector<QMapbox::QFeature> QMapboxGL::queryRenderedFeatures(const QPointF & 
     return d_ptr->m_mapRenderer->getRenderer()->queryRenderedFeatures(coordinate,options);
 }
 
-// Feature queries - might want to move result to QVector to be more Qt like
-std::vector<QMapbox::QFeature>  queryRenderedFeatures(const QRect& rect, const QVector<QString>& layerIDs)
+std::vector<QMapbox::QFeature>  QMapboxGL::queryRenderedFeatures(const QRectF& rect, const QVector<QString>& layerIDs)
 {
-    Q_UNUSED(rect);
-    Q_UNUSED(layerIDs);
-    qWarning() << "queryRenderedFeatures unimplemented for rectangle query";
-    
-    return std::vector<QMapbox::QFeature>();
+    mbgl::RenderedQueryOptions options;
+    mbgl::ScreenBox box = {
+        { rect.left(), rect.top() },
+        { rect.right(), rect.bottom() },
+    };
+    mbgl::optional<std::vector<std::string>> layers;
+    if( layerIDs.size() )
+    {
+        layers = toVector(layerIDs);
+    }
+    options.layerIDs = layers;
+    return d_ptr->m_mapRenderer->getRenderer()->queryRenderedFeatures(box, options);
 }
 
 
