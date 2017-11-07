@@ -209,7 +209,7 @@ public:
 
 // Feature queries - might want to move result to QVector to be more Qt like
     std::vector<QMapbox::QFeature> queryRenderedFeatures(const QPointF &, const QVector<QString>& layerIDs = {});
-    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QRect&,    const QVector<QString>& layerIDs = {});
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QRectF&,   const QVector<QString>& layerIDs = {});
 
 
     void addImage(const QString &name, const QImage &sprite);
