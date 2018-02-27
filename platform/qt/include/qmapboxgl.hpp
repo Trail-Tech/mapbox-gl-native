@@ -59,7 +59,7 @@ public:
 
     QString cacheDatabasePath() const;
     void setCacheDatabasePath(const QString &);
-
+    
     QString assetPath() const;
     void setAssetPath(const QString &);
 
@@ -143,6 +143,7 @@ public:
     virtual ~QMapboxGL();
 
     void cycleDebugOptions();
+    void reduceMemoryUse();
 
     QString styleJson() const;
     QString styleUrl() const;

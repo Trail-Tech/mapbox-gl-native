@@ -574,6 +574,14 @@ void QMapboxGL::cycleDebugOptions()
 }
 
 /*!
+    Requests map to shrink its memory footprint.
+*/
+void QMapboxGL::reduceMemoryUse()
+{
+    d_ptr->m_mapRenderer->getRenderer()->reduceMemoryUse();
+}
+
+/*!
     \property QMapboxGL::styleJson
     \brief the map style JSON.
 
