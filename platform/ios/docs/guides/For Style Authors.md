@@ -154,6 +154,7 @@ In style JSON | In TileJSON   | In the SDK
 `tileSize`    | —             | `MGLTileSourceOptionTileSize`
 `attribution` | `attribution` | `MGLTileSourceOptionAttributionHTMLString` (but consider specifying `MGLTileSourceOptionAttributionInfos` instead for improved security)
 `scheme`      | `scheme`      | `MGLTileSourceOptionTileCoordinateSystem`
+`encoding`    | –             | `MGLTileSourceOptionDEMEncoding`
 
 ### Shape sources
 
@@ -192,6 +193,7 @@ In style JSON | In the SDK
 `circle` | `MGLCircleStyleLayer`
 `fill` | `MGLFillStyleLayer`
 `fill-extrusion` | `MGLFillExtrusionStyleLayer`
+`heatmap` | `MGLHeatmapStyleLayer`
 `hillshade` | `MGLHillshadeStyleLayer`
 `line` | `MGLLineStyleLayer`
 `raster` | `MGLRasterStyleLayer`

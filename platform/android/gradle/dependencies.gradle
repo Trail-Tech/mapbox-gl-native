@@ -9,7 +9,7 @@ ext {
 
     versions = [
             mapboxServices: '3.0.0-beta.2',
-            mapboxTelemetry: '2.2.9',
+            mapboxTelemetry: '3.0.0-beta.1',
             supportLib    : '25.4.0',
             espresso      : '3.0.1',
             testRunner    : '1.0.1',
@@ -38,6 +38,7 @@ ext {
             testRules             : "com.android.support.test:rules:${versions.testRunner}",
             testEspressoCore      : "com.android.support.test.espresso:espresso-core:${versions.espresso}",
             testEspressoIntents   : "com.android.support.test.espresso:espresso-intents:${versions.espresso}",
+            testEspressoContrib   : "com.android.support.test.espresso:espresso-contrib:${versions.espresso}",
 
             supportAnnotations    : "com.android.support:support-annotations:${versions.supportLib}",
             supportAppcompatV7    : "com.android.support:appcompat-v7:${versions.supportLib}",
@@ -46,6 +47,7 @@ ext {
             supportRecyclerView   : "com.android.support:recyclerview-v7:${versions.supportLib}",
 
             lost                  : "com.mapzen.android:lost:${versions.lost}",
+            gmsLocation           : 'com.google.android.gms:play-services-location:11.0.4',
             timber                : "com.jakewharton.timber:timber:${versions.timber}",
             okhttp3               : "com.squareup.okhttp3:okhttp:${versions.okhttp}",
             leakCanaryDebug       : "com.squareup.leakcanary:leakcanary-android:${versions.leakCanary}",
