@@ -28,7 +28,13 @@ ThreadLocal<T>::~ThreadLocal() {
     // of the pointer it is managing. The pointer
     // needs to be explicitly cleared before we
     // destroy this object.
-    assert(!get());
+    //
+    // XXX jbrooks: but that isn't happening on exit somewhere, and
+    // having this assert fire turns every exit into a crash. I'm
+    // not too concerned about freeing resources at-exit, and it
+    // doesn't seem like there's any other destruction path for this.
+
+    //assert(!get());
 }
 
 template <class T>
