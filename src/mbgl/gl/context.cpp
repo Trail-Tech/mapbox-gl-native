@@ -94,7 +94,13 @@ static_assert(underlying_type(BufferUsage::DynamicDraw) == GL_DYNAMIC_DRAW, "Ope
 
 static_assert(std::is_same<BinaryProgramFormat, GLenum>::value, "OpenGL type mismatch");
 
-Context::Context() = default;
+Context::Context()
+    : maximumVertexBindingCount([] {
+          GLint value;
+          MBGL_CHECK_ERROR(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &value));
+          return value;
+      }()) {
+}
 
 Context::~Context() {
     if (cleanupOnDestruction) {
@@ -118,10 +124,31 @@ void Context::initializeExtensions(const std::function<gl::ProcAddress(const cha
             return nullptr;
         };
 
-        debugging = std::make_unique<extension::Debugging>(fn);
-        if (!disableVAOExtension) {
-            vertexArray = std::make_unique<extension::VertexArray>(fn);
+        static const std::string renderer = []() {
+            std::string r = reinterpret_cast<const char*>(MBGL_CHECK_ERROR(glGetString(GL_RENDERER)));
+            Log::Info(Event::General, "GPU Identifier: %s", r.c_str());
+            return r;
+        }();
+
+        // Block ANGLE on Direct3D since the debugging extension is causing crashes
+        if (!(renderer.find("ANGLE") != std::string::npos
+              && renderer.find("Direct3D") != std::string::npos)) {
+            debugging = std::make_unique<extension::Debugging>(fn);
         }
+
+        // Block Adreno 2xx, 3xx as it crashes on glBuffer(Sub)Data
+        // Block ARM Mali-T720 (in some MT8163 chipsets) as it crashes on glBindVertexArray
+        // Block ANGLE on Direct3D as the combination of Qt + Windows + ANGLE leads to crashes
+        if (renderer.find("Adreno (TM) 2") == std::string::npos
+            && renderer.find("Adreno (TM) 3") == std::string::npos
+            && (!(renderer.find("ANGLE") != std::string::npos
+                  && renderer.find("Direct3D") != std::string::npos))
+            && renderer.find("Mali-T720") == std::string::npos
+            && renderer.find("Sapphire 650") == std::string::npos
+            && !disableVAOExtension) {
+                vertexArray = std::make_unique<extension::VertexArray>(fn);
+        }
+
 #if MBGL_HAS_BINARY_PROGRAMS
         programBinary = std::make_unique<extension::ProgramBinary>(fn);
 #endif
@@ -280,22 +307,7 @@ UniqueTexture Context::createTexture() {
 }
 
 bool Context::supportsVertexArrays() const {
-    static bool blacklisted = []() {
-        const std::string renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-
-        Log::Info(Event::General, "GPU Identifier: %s", renderer.c_str());
-
-        // Blacklist Adreno 2xx, 3xx as it crashes on glBuffer(Sub)Data
-        // Blacklist ARM Mali-T720 (in some MT8163 chipsets) as it crashes on glBindVertexArray
-        return renderer.find("Adreno (TM) 2") != std::string::npos
-            || renderer.find("Adreno (TM) 3") != std::string::npos
-            || renderer.find("Mali-T720") != std::string::npos
-            || renderer.find("Sapphire 650") != std::string::npos;
-
-    }();
-
-    return !blacklisted &&
-           vertexArray &&
+    return vertexArray &&
            vertexArray->genVertexArrays &&
            vertexArray->bindVertexArray &&
            vertexArray->deleteVertexArrays;
@@ -312,7 +324,7 @@ bool Context::supportsProgramBinaries() const {
     // https://chromium.googlesource.com/chromium/src/gpu/+/master/config/gpu_driver_bug_list.json#2316
     // Blacklist Vivante GC4000 due to bugs when linking loaded programs:
     // https://github.com/mapbox/mapbox-gl-native/issues/10704
-    const std::string renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+    const std::string renderer = reinterpret_cast<const char*>(MBGL_CHECK_ERROR(glGetString(GL_RENDERER)));
     if (renderer.find("Adreno (TM) 3") != std::string::npos
      || renderer.find("Adreno (TM) 4") != std::string::npos
      || renderer.find("Adreno (TM) 5") != std::string::npos
@@ -351,7 +363,7 @@ VertexArray Context::createVertexArray() {
         VertexArrayID id = 0;
         MBGL_CHECK_ERROR(vertexArray->genVertexArrays(1, &id));
         UniqueVertexArray vao(std::move(id), { this });
-        return { UniqueVertexArrayState(new VertexArrayState(std::move(vao), *this), VertexArrayStateDeleter { true })};
+        return { UniqueVertexArrayState(new VertexArrayState(std::move(vao)), VertexArrayStateDeleter { true })};
     } else {
         // On GL implementations which do not support vertex arrays, attribute bindings are global state.
         // So return a VertexArray which shares our global state tracking and whose deleter is a no-op.
@@ -611,6 +623,9 @@ void Context::setDirtyState() {
     clearDepth.setDirty();
     clearColor.setDirty();
     clearStencil.setDirty();
+    cullFace.setDirty();
+    cullFaceSide.setDirty();
+    frontFace.setDirty();
     program.setDirty();
     lineWidth.setDirty();
     activeTextureUnit.setDirty();
@@ -655,6 +670,16 @@ void Context::clear(optional<mbgl::Color> color,
     }
 
     MBGL_CHECK_ERROR(glClear(mask));
+}
+
+void Context::setCullFaceMode(const CullFaceMode& mode) {
+    cullFace = mode.cullFace;
+
+    // These shouldn't need to be updated when face culling is disabled, but we
+    // might end up having the same isssues with Adreno 2xx GPUs as noted in
+    // Context::setDepthMode.
+    cullFaceSide = mode.side;
+    frontFace = mode.frontFace;
 }
 
 #if not MBGL_USE_GLES2

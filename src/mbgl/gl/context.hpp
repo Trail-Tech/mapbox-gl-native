@@ -36,10 +36,12 @@ class Debugging;
 class ProgramBinary;
 } // namespace extension
 
-class Context : private util::noncopyable {
+class Context {
 public:
     Context();
     ~Context();
+    Context(const Context&) = delete;
+    Context& operator=(const Context& other) = delete;
 
     void initializeExtensions(const std::function<gl::ProcAddress(const char*)>&);
 
@@ -170,6 +172,7 @@ public:
     void setDepthMode(const DepthMode&);
     void setStencilMode(const StencilMode&);
     void setColorMode(const ColorMode&);
+    void setCullFaceMode(const CullFaceMode&);
 
     void draw(PrimitiveType,
               std::size_t indexOffset,
@@ -226,7 +229,7 @@ public:
     State<value::BindVertexBuffer> vertexBuffer;
 
     State<value::BindVertexArray, const Context&> bindVertexArray { *this };
-    VertexArrayState globalVertexArrayState { UniqueVertexArray(0, { this }), *this };
+    VertexArrayState globalVertexArrayState { UniqueVertexArray(0, { this }) };
 
     State<value::PixelStorePack> pixelStorePack;
     State<value::PixelStoreUnpack> pixelStoreUnpack;
@@ -239,6 +242,8 @@ public:
 #endif // MBGL_USE_GLES2
 
     bool supportsHalfFloatTextures = false;
+    const uint32_t maximumVertexBindingCount;
+    static constexpr const uint32_t minimumRequiredVertexBindingCount = 8;
     
 private:
     State<value::StencilFunc> stencilFunc;
@@ -259,6 +264,9 @@ private:
     State<value::ClearStencil> clearStencil;
     State<value::LineWidth> lineWidth;
     State<value::BindRenderbuffer> bindRenderbuffer;
+    State<value::CullFace> cullFace;
+    State<value::CullFaceSide> cullFaceSide;
+    State<value::FrontFace> frontFace;
 #if not MBGL_USE_GLES2
     State<value::PointSize> pointSize;
 #endif // MBGL_USE_GLES2
@@ -297,13 +305,8 @@ private:
     std::vector<RenderbufferID> abandonedRenderbuffers;
 
 public:
-    // For testing and Windows because Qt + ANGLE
-    // crashes with VAO enabled.
-#if defined(_WINDOWS)
-    bool disableVAOExtension = true;
-#else
+    // For testing
     bool disableVAOExtension = false;
-#endif
 };
 
 } // namespace gl

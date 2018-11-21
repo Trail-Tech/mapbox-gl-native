@@ -2,6 +2,7 @@
 
 #import "MGLAttributionInfo_Private.h"
 #import "MGLGeometry_Private.h"
+#import "MGLRasterDEMSource.h"
 #import "NSString+MGLAdditions.h"
 #import "NSValue+MGLAdditions.h"
 
@@ -24,30 +25,30 @@ const MGLTileSourceOption MGLTileSourceOptionDEMEncoding = @"MGLTileSourceOption
 @implementation MGLTileSource
 
 - (NSURL *)configurationURL {
-    [NSException raise:@"MGLAbstractClassException"
+    [NSException raise:MGLAbstractClassException
                 format:@"MGLTileSource is an abstract class"];
     return nil;
 }
 
-- (NS_ARRAY_OF(MGLAttributionInfo *) *)attributionInfos {
+- (NSArray<MGLAttributionInfo *> *)attributionInfos {
     return [self attributionInfosWithFontSize:0 linkColor:nil];
 }
 
-- (NS_ARRAY_OF(MGLAttributionInfo *) *)attributionInfosWithFontSize:(CGFloat)fontSize linkColor:(nullable MGLColor *)linkColor {
+- (NSArray<MGLAttributionInfo *> *)attributionInfosWithFontSize:(CGFloat)fontSize linkColor:(nullable MGLColor *)linkColor {
     return [MGLAttributionInfo attributionInfosFromHTMLString:self.attributionHTMLString
                                                      fontSize:fontSize
                                                     linkColor:linkColor];
 }
 
 - (NSString *)attributionHTMLString {
-    [NSException raise:@"MGLAbstractClassException"
+    [NSException raise:MGLAbstractClassException
                 format:@"MGLTileSource is an abstract class"];
     return nil;
 }
 
 @end
 
-mbgl::Tileset MGLTileSetFromTileURLTemplates(NS_ARRAY_OF(NSString *) *tileURLTemplates, NS_DICTIONARY_OF(MGLTileSourceOption, id) * _Nullable options) {
+mbgl::Tileset MGLTileSetFromTileURLTemplates(NSArray<NSString *> *tileURLTemplates, NSDictionary<MGLTileSourceOption, id> * _Nullable options) {
     mbgl::Tileset tileSet;
 
     for (NSString *tileURLTemplate in tileURLTemplates) {

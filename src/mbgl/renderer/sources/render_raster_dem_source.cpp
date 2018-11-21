@@ -4,7 +4,6 @@
 #include <mbgl/algorithm/update_tile_masks.hpp>
 #include <mbgl/geometry/dem_data.hpp>
 #include <mbgl/renderer/buckets/hillshade_bucket.hpp>
-#include <iostream>
 
 namespace mbgl {
 
@@ -147,7 +146,7 @@ RenderRasterDEMSource::queryRenderedFeatures(const ScreenLineString&,
                                           const TransformState&,
                                           const std::vector<const RenderLayer*>&,
                                           const RenderedQueryOptions&,
-                                          const CollisionIndex& ) const {
+                                          const mat4&) const {
     return std::unordered_map<std::string, std::vector<Feature>> {};
 }
 

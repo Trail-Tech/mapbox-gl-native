@@ -25,7 +25,7 @@ typedef NSString *MGLTileSourceOption NS_STRING_ENUM;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMinimumZoomLevel;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMinimumZoomLevel;
 
 /**
  An `NSNumber` object containing an unsigned integer that specifies the maximum
@@ -39,7 +39,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMinimumZoomLevel;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMaximumZoomLevel;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMaximumZoomLevel;
 
 /**
  An `NSValue` object containing an `MGLCoordinateBounds` struct that specifies
@@ -53,7 +53,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionMaximumZoomLevel;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionCoordinateBounds;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionCoordinateBounds;
 
 #if TARGET_OS_IPHONE
 /**
@@ -69,7 +69,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionCoordinateBounds;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLString;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLString;
 
 /**
  An array of `MGLAttributionInfo` objects defining the buttons to be displayed
@@ -78,7 +78,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLSt
 
  By default, no attribution statements are displayed.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
 #else
 /**
  An HTML string defining the buttons to be displayed in the map view’s
@@ -92,7 +92,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLString;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLString;
 
 /**
  An array of `MGLAttributionInfo` objects defining the buttons to be displayed
@@ -101,7 +101,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionHTMLSt
 
  By default, no attribution statements are displayed.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
 #endif
 
 /**
@@ -115,8 +115,7 @@ extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionAttributionInfos;
  <a href="https://github.com/mapbox/tilejson-spec/tree/master/2.1.0">TileJSON</a>
  specification.
  */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionTileCoordinateSystem;
-
+FOUNDATION_EXTERN MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionTileCoordinateSystem;
 
 /**
  Tile coordinate systems that determine how tile coordinates in tile URLs are
@@ -141,18 +140,6 @@ typedef NS_ENUM(NSUInteger, MGLTileCoordinateSystem) {
      */
     MGLTileCoordinateSystemTMS
 };
-
-
-/**
- An `NSNumber` object containing an unsigned integer that specifies the encoding
- formula for raster-dem tilesets. The integer corresponds to one of
- the constants described in `MGLDEMEncoding`.
-
- The default value for this option is `MGLDEMEncodingMapbox`.
-
- This option is not supported by the TileJSON spec.
- */
-extern MGL_EXPORT const MGLTileSourceOption MGLTileSourceOptionDEMEncoding;
 
 /**
  The encoding formula used to generate the raster-dem tileset
@@ -184,9 +171,9 @@ typedef NS_ENUM(NSUInteger, MGLDEMEncoding) {
  Mapbox-hosted tile set, view it in
  <a href="https://www.mapbox.com/studio/tilesets/">Mapbox Studio’s Tilesets editor</a>.
 
- Create instances of `MGLRasterSource` and `MGLVectorSource` in order to use
- `MGLTileSource`'s properties and methods. Do not create instances of `MGLTileSource`
- directly, and do not create your own subclasses of this class.
+ Create instances of `MGLRasterTileSource` and `MGLVectorTileSource` in order
+ to use `MGLTileSource`'s properties and methods. Do not create instances of
+ `MGLTileSource` directly, and do not create your own subclasses of this class.
  */
 MGL_EXPORT
 @interface MGLTileSource : MGLSource
@@ -212,7 +199,7 @@ MGL_EXPORT
  configuration URL, this array is also empty until the configuration JSON file
  is loaded.
  */
-@property (nonatomic, copy, readonly) NS_ARRAY_OF(MGLAttributionInfo *) *attributionInfos;
+@property (nonatomic, copy, readonly) NSArray<MGLAttributionInfo *> *attributionInfos;
 
 @end
 

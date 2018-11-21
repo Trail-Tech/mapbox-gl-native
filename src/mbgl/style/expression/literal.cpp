@@ -1,4 +1,5 @@
 #include <mbgl/style/expression/literal.hpp>
+#include <mbgl/style/conversion_impl.hpp>
 #include <mbgl/util/string.hpp>
 
 namespace mbgl {
@@ -113,4 +114,3 @@ mbgl::Value Literal::serialize() const {
 } // namespace expression
 } // namespace style
 } // namespace mbgl
-

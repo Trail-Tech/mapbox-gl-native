@@ -37,10 +37,11 @@ type::Type parseType(v8::Local<v8::Object> type) {
     static std::unordered_map<std::string, type::Type> types = {
         {"string", type::String},
         {"number", type::Number},
-        {"noolean", type::Boolean},
+        {"boolean", type::Boolean},
         {"object", type::Object},
         {"color", type::Color},
-        {"value", type::Value}
+        {"value", type::Value},
+        {"formatted", type::Formatted}
     };
 
     v8::Local<v8::Value> v8kind = Nan::Get(type, Nan::New("kind").ToLocalChecked()).ToLocalChecked();
@@ -52,7 +53,7 @@ type::Type parseType(v8::Local<v8::Object> type) {
 
         v8::Local<v8::String> Nkey = Nan::New("N").ToLocalChecked();
         if (Nan::Has(type, Nkey).FromMaybe(false)) {
-            N = Nan::Get(type, Nkey).ToLocalChecked()->ToInt32()->Value();
+            N = Nan::To<v8::Int32>(Nan::Get(type, Nkey).ToLocalChecked()).ToLocalChecked()->Value();
         }
         return type::Array(itemType, N);
     }
@@ -75,8 +76,8 @@ void NodeExpression::Parse(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     auto expr = info[0];
 
     try {
-        ParsingContext ctx(expected);
-        ParseResult parsed = ctx.parse(mbgl::style::conversion::Convertible(expr));
+        ParsingContext ctx = expected ? ParsingContext(*expected) : ParsingContext();
+        ParseResult parsed = ctx.parseLayerPropertyExpression(mbgl::style::conversion::Convertible(expr));
         if (parsed) {
             assert(ctx.getErrors().size() == 0);
             auto nodeExpr = new NodeExpression(std::move(*parsed));
@@ -142,6 +143,41 @@ struct ToValue {
             result->Set(i, toJS(array[i]));
         }
         return scope.Escape(result);
+    }
+
+    v8::Local<v8::Value> operator()(const Collator&) {
+        // Collators are excluded from constant folding and there's no Literal parser
+        // for them so there shouldn't be any way to serialize this value.
+        assert(false);
+        Nan::EscapableHandleScope scope;
+        return scope.Escape(Nan::Null());
+    }
+    
+    v8::Local<v8::Value> operator()(const Formatted& formatted) {
+        // This mimics the internal structure of the Formatted class in formatted.js
+        // A better approach might be to use the explicit serialized form
+        // both here and on the JS side? e.g. toJS(fromExpressionValue<mbgl::Value>(formatted))
+        std::unordered_map<std::string, mbgl::Value> serialized;
+        std::vector<mbgl::Value> sections;
+        for (const auto& section : formatted.sections) {
+            std::unordered_map<std::string, mbgl::Value> serializedSection;
+            serializedSection.emplace("text", section.text);
+            if (section.fontScale) {
+                serializedSection.emplace("scale", *section.fontScale);
+            } else {
+                serializedSection.emplace("scale", mbgl::NullValue());
+            }
+            if (section.fontStack) {
+                std::string fontStackString;
+                serializedSection.emplace("fontStack", mbgl::fontStackToString(*section.fontStack));
+            } else {
+                serializedSection.emplace("fontStack", mbgl::NullValue());
+            }
+            sections.push_back(serializedSection);
+        }
+        serialized.emplace("sections", sections);
+
+        return toJS(serialized);
     }
 
     v8::Local<v8::Value> operator()(const mbgl::Color& color) {

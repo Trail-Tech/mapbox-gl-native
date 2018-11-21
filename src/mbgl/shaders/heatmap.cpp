@@ -1,12 +1,17 @@
 // NOTE: DO NOT CHANGE THIS FILE. IT IS AUTOMATICALLY GENERATED.
 
 #include <mbgl/shaders/heatmap.hpp>
+#include <mbgl/shaders/source.hpp>
 
 namespace mbgl {
 namespace shaders {
 
 const char* heatmap::name = "heatmap";
-const char* heatmap::vertexSource = R"MBGL_SHADER(
+const char* heatmap::vertexSource = source() + 10792;
+const char* heatmap::fragmentSource = source() + 13248;
+
+// Uncompressed source of heatmap.vertex.glsl:
+/*
 
 #ifndef HAS_UNIFORM_u_weight
 uniform lowp float a_weight_t;
@@ -88,8 +93,10 @@ void main(void) {
     gl_Position = u_matrix * pos;
 }
 
-)MBGL_SHADER";
-const char* heatmap::fragmentSource = R"MBGL_SHADER(
+*/
+
+// Uncompressed source of heatmap.fragment.glsl:
+/*
 
 #ifndef HAS_UNIFORM_u_weight
 varying highp float weight;
@@ -122,7 +129,7 @@ void main() {
 #endif
 }
 
-)MBGL_SHADER";
+*/
 
 } // namespace shaders
 } // namespace mbgl

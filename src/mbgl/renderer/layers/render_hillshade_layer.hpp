@@ -15,6 +15,7 @@ public:
     void transition(const TransitionParameters&) override;
     void evaluate(const PropertyEvaluationParameters&) override;
     bool hasTransition() const override;
+    bool hasCrossfade() const override;
 
     void render(PaintParameters&, RenderSource* src) override;
 
@@ -29,10 +30,5 @@ private:
     const std::array<float, 2> getLatRange(const UnwrappedTileID& id);
     const std::array<float, 2> getLight(const PaintParameters& parameters);
 };
-
-template <>
-inline bool RenderLayer::is<RenderHillshadeLayer>() const {
-    return type == style::LayerType::Hillshade;
-}
 
 } // namespace mbgl

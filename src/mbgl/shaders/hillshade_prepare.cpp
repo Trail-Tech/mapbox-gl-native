@@ -1,12 +1,17 @@
 // NOTE: DO NOT CHANGE THIS FILE. IT IS AUTOMATICALLY GENERATED.
 
 #include <mbgl/shaders/hillshade_prepare.hpp>
+#include <mbgl/shaders/source.hpp>
 
 namespace mbgl {
 namespace shaders {
 
 const char* hillshade_prepare::name = "hillshade_prepare";
-const char* hillshade_prepare::vertexSource = R"MBGL_SHADER(
+const char* hillshade_prepare::vertexSource = source() + 36031;
+const char* hillshade_prepare::fragmentSource = source() + 36245;
+
+// Uncompressed source of hillshade_prepare.vertex.glsl:
+/*
 uniform mat4 u_matrix;
 
 attribute vec2 a_pos;
@@ -19,8 +24,10 @@ void main() {
     v_pos = (a_texture_pos / 8192.0) / 2.0 + 0.25;
 }
 
-)MBGL_SHADER";
-const char* hillshade_prepare::fragmentSource = R"MBGL_SHADER(
+*/
+
+// Uncompressed source of hillshade_prepare.fragment.glsl:
+/*
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -94,7 +101,7 @@ void main() {
 #endif
 }
 
-)MBGL_SHADER";
+*/
 
 } // namespace shaders
 } // namespace mbgl

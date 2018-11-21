@@ -2,14 +2,16 @@
 // Edit platform/darwin/scripts/generate-style-code.js, then run `make darwin-style-code`.
 
 #import "MGLSource.h"
-#import "NSPredicate+MGLAdditions.h"
+#import "NSPredicate+MGLPrivateAdditions.h"
 #import "NSDate+MGLAdditions.h"
 #import "MGLStyleLayer_Private.h"
 #import "MGLStyleValue_Private.h"
 #import "MGLHeatmapStyleLayer.h"
+#import "MGLLoggingConfiguration_Private.h"
+#import "MGLHeatmapStyleLayer_Private.h"
 
 #include <mbgl/style/transition_options.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
+
 
 @interface MGLHeatmapStyleLayer ()
 
@@ -21,6 +23,7 @@
 
 - (instancetype)initWithIdentifier:(NSString *)identifier source:(MGLSource *)source
 {
+    MGLLogDebug(@"Initializing %@ with identifier: %@ source: %@", NSStringFromClass([self class]), identifier, source);
     auto layer = std::make_unique<mbgl::style::HeatmapLayer>(identifier.UTF8String, source.identifier.UTF8String);
     return self = [super initWithPendingLayer:std::move(layer)];
 }
@@ -48,6 +51,7 @@
 - (void)setSourceLayerIdentifier:(NSString *)sourceLayerIdentifier
 {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting sourceLayerIdentifier: %@", sourceLayerIdentifier);
 
     self.rawLayer->setSourceLayer(sourceLayerIdentifier.UTF8String ?: "");
 }
@@ -55,8 +59,9 @@
 - (void)setPredicate:(NSPredicate *)predicate
 {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting predicate: %@", predicate);
 
-    self.rawLayer->setFilter(predicate ? predicate.mgl_filter : mbgl::style::NullFilter());
+    self.rawLayer->setFilter(predicate ? predicate.mgl_filter : mbgl::style::Filter());
 }
 
 - (NSPredicate *)predicate
@@ -70,8 +75,9 @@
 
 - (void)setHeatmapColor:(NSExpression *)heatmapColor {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapColor: %@", heatmapColor);
 
-    auto mbglValue = MGLStyleValueTransformer<mbgl::Color, MGLColor *>().toPropertyValue<mbgl::style::HeatmapColorPropertyValue>(heatmapColor);
+    auto mbglValue = MGLStyleValueTransformer<mbgl::Color, MGLColor *>().toPropertyValue<mbgl::style::ColorRampPropertyValue>(heatmapColor);
     self.rawLayer->setHeatmapColor(mbglValue);
 }
 
@@ -87,8 +93,9 @@
 
 - (void)setHeatmapIntensity:(NSExpression *)heatmapIntensity {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapIntensity: %@", heatmapIntensity);
 
-    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapIntensity);
+    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapIntensity, false);
     self.rawLayer->setHeatmapIntensity(mbglValue);
 }
 
@@ -104,6 +111,7 @@
 
 - (void)setHeatmapIntensityTransition:(MGLTransition )transition {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapIntensityTransition: %@", MGLStringFromMGLTransition(transition));
 
     mbgl::style::TransitionOptions options { { MGLDurationFromTimeInterval(transition.duration) }, { MGLDurationFromTimeInterval(transition.delay) } };
     self.rawLayer->setHeatmapIntensityTransition(options);
@@ -122,8 +130,9 @@
 
 - (void)setHeatmapOpacity:(NSExpression *)heatmapOpacity {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapOpacity: %@", heatmapOpacity);
 
-    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapOpacity);
+    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapOpacity, false);
     self.rawLayer->setHeatmapOpacity(mbglValue);
 }
 
@@ -139,6 +148,7 @@
 
 - (void)setHeatmapOpacityTransition:(MGLTransition )transition {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapOpacityTransition: %@", MGLStringFromMGLTransition(transition));
 
     mbgl::style::TransitionOptions options { { MGLDurationFromTimeInterval(transition.duration) }, { MGLDurationFromTimeInterval(transition.delay) } };
     self.rawLayer->setHeatmapOpacityTransition(options);
@@ -157,8 +167,9 @@
 
 - (void)setHeatmapRadius:(NSExpression *)heatmapRadius {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapRadius: %@", heatmapRadius);
 
-    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::DataDrivenPropertyValue<float>>(heatmapRadius);
+    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapRadius, true);
     self.rawLayer->setHeatmapRadius(mbglValue);
 }
 
@@ -174,6 +185,7 @@
 
 - (void)setHeatmapRadiusTransition:(MGLTransition )transition {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapRadiusTransition: %@", MGLStringFromMGLTransition(transition));
 
     mbgl::style::TransitionOptions options { { MGLDurationFromTimeInterval(transition.duration) }, { MGLDurationFromTimeInterval(transition.delay) } };
     self.rawLayer->setHeatmapRadiusTransition(options);
@@ -192,8 +204,9 @@
 
 - (void)setHeatmapWeight:(NSExpression *)heatmapWeight {
     MGLAssertStyleLayerIsValid();
+    MGLLogDebug(@"Setting heatmapWeight: %@", heatmapWeight);
 
-    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::DataDrivenPropertyValue<float>>(heatmapWeight);
+    auto mbglValue = MGLStyleValueTransformer<float, NSNumber *>().toPropertyValue<mbgl::style::PropertyValue<float>>(heatmapWeight, true);
     self.rawLayer->setHeatmapWeight(mbglValue);
 }
 
@@ -208,3 +221,11 @@
 }
 
 @end
+
+namespace mbgl {
+
+MGLStyleLayer* HeatmapStyleLayerPeerFactory::createPeer(style::Layer* rawLayer) {
+    return [[MGLHeatmapStyleLayer alloc] initWithRawLayer:rawLayer];
+}
+
+}  // namespace mbgl
