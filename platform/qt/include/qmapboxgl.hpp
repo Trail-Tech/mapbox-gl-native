@@ -153,6 +153,8 @@ public:
               qreal pixelRatio = 1);
     virtual ~QMapboxGL();
 
+    void reduceMemoryUse();
+
     QString styleJson() const;
     QString styleUrl() const;
 
@@ -225,9 +227,15 @@ public:
     QMargins margins() const;
 
     void addSource(const QString &sourceID, const QVariantMap& params);
+    void addSource(const QString &sourceID, const QMapbox::QFeatureCollection &data);
     bool sourceExists(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
+    void updateSource(const QString &sourceID, const QMapbox::QFeatureCollection &data);
     void removeSource(const QString &sourceID);
+
+    // Feature queries - might want to move result to QVector to be more Qt like
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QPointF &, const QVector<QString>& layerIDs = {});
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QRectF&,   const QVector<QString>& layerIDs = {});
 
     void addImage(const QString &name, const QImage &sprite);
     void removeImage(const QString &name);
