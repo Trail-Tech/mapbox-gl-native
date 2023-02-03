@@ -40,6 +40,7 @@ public:
 
     mbgl::EdgeInsets margins;
     std::unique_ptr<mbgl::Map> mapObj;
+    std::unique_ptr<QMapboxGLMapRenderer> m_mapRenderer; // Ugly hack ...
 
 public slots:
     void requestRendering();
@@ -55,7 +56,6 @@ private:
     std::shared_ptr<mbgl::UpdateParameters> m_updateParameters;
 
     std::unique_ptr<QMapboxGLMapObserver> m_mapObserver;
-    std::unique_ptr<QMapboxGLMapRenderer> m_mapRenderer;
     std::unique_ptr<mbgl::Actor<mbgl::ResourceTransform::TransformCallback>> m_resourceTransform;
 
     QMapboxGLSettings::GLContextMode m_mode;

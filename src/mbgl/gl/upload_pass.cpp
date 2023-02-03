@@ -6,6 +6,7 @@
 #include <mbgl/gl/vertex_buffer_resource.hpp>
 #include <mbgl/gl/index_buffer_resource.hpp>
 #include <mbgl/gl/texture_resource.hpp>
+#include <mbgl/util/logging.hpp>
 
 namespace mbgl {
 namespace gl {
@@ -25,8 +26,34 @@ std::unique_ptr<gfx::VertexBufferResource> UploadPass::createVertexBufferResourc
     // NOLINTNEXTLINE(performance-move-const-arg)
     UniqueBuffer result{ std::move(id), { commandEncoder.context } };
     commandEncoder.context.vertexBuffer = result;
-    MBGL_CHECK_ERROR(
-        glBufferData(GL_ARRAY_BUFFER, size, data, Enum<gfx::BufferUsageType>::to(usage)));
+
+    // If this might be a float buffer with three components, overallocate the VBO by half
+    // to mitigate a buffer overrun in libGAL's computeWLimit (as of imx-gpu-viv 6.2.4.p4.0)
+    if (!(size % 12) && usage == gfx::BufferUsageType::StreamDraw) {
+        static const bool enabled = !getenv("MAPBOX_NO_WLIMIT_WORKAROUND");
+        static const bool logEnabled = getenv("MAPBOX_LOG_WLIMIT_WORKAROUND");
+        std::size_t paddedSize = size + (size / 2);
+
+        if (logEnabled) {
+            if (enabled) {
+                Log::Info(Event::OpenGL, "Overallocating VBO %d (%d -> %d) for computeWLimit overrun",
+                          int(id), int(size), int(paddedSize));
+            } else {
+                Log::Info(Event::OpenGL, "Would overallocate VBO %d (%d -> %d) for computeWLimit "
+                          "overrun, but MAPBOX_NO_WLIMIT_WORKAROUND is set", int(id), int(size),
+                          int(paddedSize));
+            }
+        }
+        if (!enabled)
+            paddedSize = size;
+
+        MBGL_CHECK_ERROR(glBufferData(GL_ARRAY_BUFFER, paddedSize, nullptr,
+                                      Enum<gfx::BufferUsageType>::to(usage)));
+        MBGL_CHECK_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, size, data));
+    } else {
+        MBGL_CHECK_ERROR(
+            glBufferData(GL_ARRAY_BUFFER, size, data, Enum<gfx::BufferUsageType>::to(usage)));
+    }
     return std::make_unique<gl::VertexBufferResource>(std::move(result), size);
 }
 

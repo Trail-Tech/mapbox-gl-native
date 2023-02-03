@@ -9,7 +9,8 @@
 #include <QSize>
 #include <QString>
 #include <QStringList>
-
+#include <QMutex>
+#include <memory>
 #include <functional>
 
 class QMapboxGLPrivate;
@@ -225,9 +226,17 @@ public:
     QMargins margins() const;
 
     void addSource(const QString &sourceID, const QVariantMap& params);
+    void addSource(const QString &sourceID, const QMapbox::QFeatureCollection &data);
     bool sourceExists(const QString &sourceID);
     void updateSource(const QString &sourceID, const QVariantMap& params);
+    // Deprecate this version, and use the version with the shared_ptr instead going forward
+    void updateSource(const QString &sourceID, const QMapbox::QFeatureCollection &data);
+    void updateSource(const QString &sourceID, const std::shared_ptr<QMapbox::QFeatureCollection> &data);
     void removeSource(const QString &sourceID);
+
+    // Feature queries - might want to move result to QVector to be more Qt like
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QPointF &, const QVector<QString>& layerIDs = {});
+    std::vector<QMapbox::QFeature> queryRenderedFeatures(const QRectF&,   const QVector<QString>& layerIDs = {});
 
     void addImage(const QString &name, const QImage &sprite);
     void removeImage(const QString &name);

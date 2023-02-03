@@ -76,8 +76,14 @@ gfx::DepthMode PaintParameters::depthModeForSublayer(uint8_t n, gfx::DepthMaskTy
     if (currentLayer < opaquePassCutoff) {
         return gfx::DepthMode::disabled();
     }
-    float depth = depthRangeSize + ((1 + currentLayer) * numSublayers + n) * depthEpsilon;
-    return gfx::DepthMode { gfx::DepthFunctionType::LessEqual, mask, { depth, depth } };
+
+    // Particly reverted https://github.com/mapbox/mapbox-gl-native/commit/f9796d2a28aa55936a9bb1cb99f9aac39d29b27c
+    // which caused rendering issue in QtQuick UI.
+    // The problem was that min and max depth range were equal.
+    // Support ID 99480
+    float nearDepth = ((1 + currentLayer) * numSublayers + n) * depthEpsilon;
+    float farDepth = nearDepth + depthRangeSize;
+    return gfx::DepthMode { gfx::DepthFunctionType::LessEqual, mask, { nearDepth, farDepth } };
 }
 
 gfx::DepthMode PaintParameters::depthModeFor3D() const {

@@ -16,6 +16,7 @@
 #include <mbgl/math/log2.hpp>
 #include <mbgl/math/minmax.hpp>
 #include <mbgl/renderer/renderer.hpp>
+#include <mbgl/renderer/query.hpp>
 #include <mbgl/storage/file_source_manager.hpp>
 #include <mbgl/storage/network_status.hpp>
 #include <mbgl/storage/online_file_source.hpp>
@@ -60,6 +61,10 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QColor>
+#include <QtConcurrent>
+#include <QFutureWatcher>
+#include <QMutexLocker>
+#include <QMutex>
 
 #include <functional>
 #include <memory>
@@ -1276,6 +1281,18 @@ void QMapboxGL::addSource(const QString &id, const QVariantMap &params)
     d_ptr->mapObj->getStyle().addSource(std::move(*source));
 }
 
+void QMapboxGL::addSource(const QString &sourceID, const QMapbox::QFeatureCollection &data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = std::make_unique<GeoJSONSource>(sourceID.toStdString());
+    auto geojson_data = mbgl::GeoJSON{data};
+    source->setGeoJSON(geojson_data);
+
+    d_ptr->mapObj->getStyle().addSource(std::move(source));
+}
+
 /*!
     Returns true if the layer with given \a sourceID exists, false otherwise.
 */
@@ -1319,6 +1336,96 @@ void QMapboxGL::updateSource(const QString &id, const QVariantMap &params)
     }
 }
 
+// Deprecate this version, but leave for now until the corresponding changes are integrated.
+void QMapboxGL::updateSource(const QString &sourceID, const QMapbox::QFeatureCollection &data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+    if (source == nullptr) {
+        addSource(sourceID, data);
+        return;
+    }
+
+    auto watcher = new QFutureWatcher<std::shared_ptr<GeoJSONData>*>(this);
+    connect(watcher, &QFutureWatcher<std::shared_ptr<GeoJSONData>*>::finished, this, [this, watcher, sourceID] {
+        std::shared_ptr<GeoJSONData> *result = watcher->result();
+
+        watcher->deleteLater();
+
+        if (result != nullptr)
+        {
+            auto styleSource = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+            if (styleSource == nullptr) {
+                qWarning() << Q_FUNC_INFO << "Unable to update source: style source is NULL";
+                return;
+            }
+
+            auto sourceGeoJSON = styleSource->as<GeoJSONSource>();
+            if (sourceGeoJSON == nullptr) {
+                qWarning() << Q_FUNC_INFO << "Unable to update source: only GeoJSON sources are mutable.";
+                return;
+            }
+
+            sourceGeoJSON->setGeoJSONData(*result);
+
+            delete result;
+        }
+    });
+
+    const auto geoJSON = mbgl::GeoJSON{data};
+
+    watcher->setFuture(QtConcurrent::run([geoJSON]() -> std::shared_ptr<GeoJSONData> * {
+        return new std::shared_ptr<GeoJSONData>(GeoJSONData::create(geoJSON));
+    }));
+}
+
+void QMapboxGL::updateSource(const QString &sourceID, const std::shared_ptr<QMapbox::QFeatureCollection> &data)
+{
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
+
+    auto source = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+    if (source == nullptr) {
+        addSource(sourceID, *data);
+        return;
+    }
+
+    auto watcher = new QFutureWatcher<std::shared_ptr<GeoJSONData>*>(this);
+    connect(watcher, &QFutureWatcher<std::shared_ptr<GeoJSONData>*>::finished, this, [this, watcher, sourceID] {
+        std::shared_ptr<GeoJSONData> *result = watcher->result();
+
+        watcher->deleteLater();
+
+        if (result != nullptr)
+        {
+            auto styleSource = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+            if (styleSource == nullptr) {
+                qWarning() << Q_FUNC_INFO << "Unable to update source: style source is NULL";
+                return;
+            }
+
+            auto sourceGeoJSON = styleSource->as<GeoJSONSource>();
+            if (sourceGeoJSON == nullptr) {
+                qWarning() << Q_FUNC_INFO << "Unable to update source: only GeoJSON sources are mutable.";
+                return;
+            }
+
+            sourceGeoJSON->setGeoJSONData(*result);
+
+            delete result;
+        }
+    });
+
+    watcher->setFuture(QtConcurrent::run([data]() -> std::shared_ptr<GeoJSONData> * {
+        const auto geoJSON = mbgl::GeoJSON{*data};
+
+        return new std::shared_ptr<GeoJSONData>(GeoJSONData::create(geoJSON));
+    }));
+}
+#endif
+
 /*!
     Removes the source \a id.
 
@@ -1331,6 +1438,64 @@ void QMapboxGL::removeSource(const QString& id)
     if (d_ptr->mapObj->getStyle().getSource(sourceIDStdString)) {
         d_ptr->mapObj->getStyle().removeSource(sourceIDStdString);
     }
+}
+
+inline std::vector<std::string> toVector(const QVector<QString>&  array) {
+    std::vector<std::string> vector;
+    int len = array.size();
+    vector.reserve(len);
+
+    for (int i = 0; i < len; i++) {
+        vector.push_back(array.at(i).toStdString());
+    }
+
+    return vector;
+}
+
+
+std::vector<QMapbox::QFeature> QMapboxGL::queryRenderedFeatures(const QPointF & point, const QVector<QString>& layerIDs)
+{
+    mbgl::RenderedQueryOptions options;
+    mbgl::ScreenCoordinate coordinate(point.x(), point.y());
+    mbgl::optional<std::vector<std::string>> layers;
+    if( layerIDs.size() )
+    {
+        layers = toVector(layerIDs);
+    }
+    options.layerIDs = layers;
+
+    //Convert from std::vector<mbgl::Feature> to std::vector<QMapbox::QFeature>
+    std::vector<QMapbox::QFeature> result;
+    const std::vector<mbgl::Feature> features = d_ptr->m_mapRenderer->getRenderer()->queryRenderedFeatures(coordinate, options);
+    for (const auto &feature: features) {
+        result.push_back(feature);
+    }
+
+    return result;
+}
+
+std::vector<QMapbox::QFeature>  QMapboxGL::queryRenderedFeatures(const QRectF& rect, const QVector<QString>& layerIDs)
+{
+    mbgl::RenderedQueryOptions options;
+    mbgl::ScreenBox box = {
+        { rect.left(), rect.top() },
+        { rect.right(), rect.bottom() },
+        };
+    mbgl::optional<std::vector<std::string>> layers;
+    if( layerIDs.size() )
+    {
+        layers = toVector(layerIDs);
+    }
+    options.layerIDs = layers;
+
+    //Convert from std::vector<mbgl::Feature> to std::vector<QMapbox::QFeature>
+    std::vector<QMapbox::QFeature> result;
+    const std::vector<mbgl::Feature> features = d_ptr->m_mapRenderer->getRenderer()->queryRenderedFeatures(box, options);
+    for (const auto &feature: features) {
+        result.push_back(feature);
+    }
+
+    return result;
 }
 
 /*!

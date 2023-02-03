@@ -34,6 +34,8 @@ public:
     // Thread-safe, called by the Frontend
     void updateParameters(std::shared_ptr<mbgl::UpdateParameters>);
 
+    mbgl::Renderer* getRenderer() const;
+
 signals:
     void needsRendering();
 

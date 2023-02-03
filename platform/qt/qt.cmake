@@ -4,6 +4,7 @@ find_package(Qt5Gui REQUIRED)
 find_package(Qt5Network REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Concurrent)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions("-DQT_COMPILING_QIMAGE_COMPAT_CPP")
@@ -77,11 +78,13 @@ target_compile_definitions(
 target_include_directories(
     mbgl-core
     PRIVATE ${PROJECT_SOURCE_DIR}/platform/default/include
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
 include(${PROJECT_SOURCE_DIR}/vendor/icu.cmake)
 include(${PROJECT_SOURCE_DIR}/vendor/nunicode.cmake)
 include(${PROJECT_SOURCE_DIR}/vendor/sqlite.cmake)
+include(${PROJECT_SOURCE_DIR}/vendor/mapbox-base.cmake)
 
 target_link_libraries(
     mbgl-core
@@ -92,8 +95,11 @@ target_link_libraries(
         Qt5::Gui
         Qt5::Network
         Qt5::OpenGL
+        Qt5::Concurrent
         mbgl-vendor-nunicode
         mbgl-vendor-sqlite
+    PUBLIC
+        Mapbox::Base::geojson.hpp
 )
 
 add_library(
@@ -137,6 +143,7 @@ target_link_libraries(
     PRIVATE
         Qt5::Core
         Qt5::Gui
+        Qt5::Concurrent
         mbgl-compiler-options
         mbgl-core
 )
@@ -150,52 +157,18 @@ add_executable(
 )
 
 # Qt public API should keep compatibility with old compilers for legacy systems
-set_property(TARGET mbgl-qt PROPERTY CXX_STANDARD 98)
+set_property(TARGET mbgl-qt PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(
     mbgl-qt
     PRIVATE
         Qt5::Widgets
         Qt5::Gui
+        Qt5::Concurrent
         mbgl-compiler-options
+        mbgl-core
         qmapboxgl
 )
-
-add_executable(
-    mbgl-test-runner
-    ${PROJECT_SOURCE_DIR}/platform/qt/test/main.cpp
-)
-
-target_include_directories(
-    mbgl-test-runner
-    PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/test/include
-)
-
-target_compile_definitions(
-    mbgl-test-runner
-    PRIVATE WORK_DIRECTORY=${PROJECT_SOURCE_DIR}
-)
-
-target_link_libraries(
-    mbgl-test-runner
-    PRIVATE
-        Qt5::Gui
-        Qt5::OpenGL
-        mbgl-compiler-options
-        pthread
-)
-
-if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_link_libraries(
-        mbgl-test-runner
-        PRIVATE -Wl,-force_load mbgl-test
-    )
-else()
-    target_link_libraries(
-        mbgl-test-runner
-        PRIVATE -Wl,--whole-archive mbgl-test -Wl,--no-whole-archive
-    )
-endif()
 
 find_program(MBGL_QDOC NAMES qdoc)
 
@@ -211,5 +184,3 @@ if(MBGL_QDOC)
             ${CMAKE_BINARY_DIR}/docs
     )
 endif()
-
-add_test(NAME mbgl-test-runner COMMAND mbgl-test-runner WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
