@@ -1424,7 +1424,6 @@ void QMapboxGL::updateSource(const QString &sourceID, const std::shared_ptr<QMap
         return new std::shared_ptr<GeoJSONData>(GeoJSONData::create(geoJSON));
     }));
 }
-#endif
 
 /*!
     Removes the source \a id.
