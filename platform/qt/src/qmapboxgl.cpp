@@ -61,8 +61,6 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QColor>
-#include <QtConcurrent>
-#include <QFutureWatcher>
 
 #include <functional>
 #include <memory>
@@ -1293,10 +1291,12 @@ void QMapboxGL::addSource(const QString &sourceID, const QMapbox::QFeatureCollec
     using namespace mbgl::style::conversion;
 
     auto source = std::make_unique<GeoJSONSource>(sourceID.toStdString());
-    auto geojson_data = mbgl::GeoJSON{data};
-    source->setGeoJSON(geojson_data);
-
     d_ptr->mapObj->getStyle().addSource(std::move(source));
+
+    QMetaObject::invokeMethod(
+        this,
+        [this, sourceID, data]() {this->addFeatureCollectionToSource(sourceID, data);},
+        Qt::QueuedConnection);
 }
 
 /*!
@@ -1353,30 +1353,33 @@ void QMapboxGL::updateSource(const QString &sourceID, const QMapbox::QFeatureCol
         return;
     }
 
-    auto watcher = new QFutureWatcher<std::shared_ptr<GeoJSONData>>(this);
-    connect(watcher, &QFutureWatcher<std::shared_ptr<GeoJSONData>>::finished, this, [this, watcher, sourceID] {
-        watcher->deleteLater();
+    QMetaObject::invokeMethod(
+        this,
+        [this, sourceID, data]() {this->addFeatureCollectionToSource(sourceID, data);},
+        Qt::QueuedConnection);
+}
 
-        auto styleSource = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
-        if (styleSource == nullptr) {
-            qWarning() << Q_FUNC_INFO << "Unable to update source: style source is NULL";
-            return;
-        }
+void QMapboxGL::addFeatureCollectionToSource(const QString& sourceID, const QMapbox::QFeatureCollection& data) {
+    qInfo() << Q_FUNC_INFO << sourceID << data.size();
 
-        auto sourceGeoJSON = styleSource->as<GeoJSONSource>();
-        if (sourceGeoJSON == nullptr) {
-            qWarning() << Q_FUNC_INFO << "Unable to update source: only GeoJSON sources are mutable.";
-            return;
-        }
+    using namespace mbgl::style;
+    using namespace mbgl::style::conversion;
 
-        sourceGeoJSON->setGeoJSONData(watcher->result());
-    });
+    auto styleSource = d_ptr->mapObj->getStyle().getSource(sourceID.toStdString());
+    if (styleSource == nullptr) {
+        qWarning() << Q_FUNC_INFO << "Unable to update source: style source is NULL";
+        return;
+    }
 
-    const auto geoJSON = mbgl::GeoJSON{data};
+    auto sourceGeoJSON = styleSource->as<GeoJSONSource>();
+    if (sourceGeoJSON == nullptr) {
+        qWarning() << Q_FUNC_INFO << "Unable to update source: only GeoJSON sources are mutable.";
+        return;
+    }
 
-    watcher->setFuture(QtConcurrent::run([geoJSON]() -> std::shared_ptr<GeoJSONData> {
-        return GeoJSONData::create(geoJSON);
-    }));
+    const mbgl::GeoJSON geoJSON = mbgl::GeoJSON{data};
+
+    sourceGeoJSON->setGeoJSON(geoJSON);
 }
 
 /*!

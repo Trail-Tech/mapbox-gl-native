@@ -265,6 +265,8 @@ public slots:
     // and renders the map when completed.
     void startStaticRender();
 
+    void addFeatureCollectionToSource(const QString& sourceID, const QMapbox::QFeatureCollection& geoJSON);
+
 signals:
     void needsRendering();
     void mapChanged(QMapboxGL::MapChange);
