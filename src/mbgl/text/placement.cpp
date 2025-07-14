@@ -37,7 +37,7 @@ JointOpacityState::JointOpacityState(const JointOpacityState& prevOpacityState, 
 bool JointOpacityState::isHidden() const {
     return icon.isHidden() && text.isHidden();
 }
-    
+
 const CollisionGroups::CollisionGroup& CollisionGroups::get(const std::string& sourceID) {
     // The predicate/groupID mechanism allows for arbitrary grouping,
     // but the current interface defines one source == one group when
@@ -241,11 +241,6 @@ void Placement::placeSymbolBucket(const BucketPlacementData& params, std::set<ui
     for (const SymbolInstance& symbol : getSortedSymbols(params, ctx.pixelRatio)) {
         if (seenCrossTileIDs.count(symbol.crossTileID) != 0u) continue;
         placeSymbol(symbol, ctx);
-<<<<<<< Updated upstream
-        seenCrossTileIDs.insert(symbol.crossTileID);
-    }
-
-=======
         if (symbol.crossTileID != SymbolInstance::invalidCrossTileID() && !ctx.getRenderTile().holdForFade()) {
             seenCrossTileIDs.insert(symbol.crossTileID);
         }
@@ -253,7 +248,6 @@ void Placement::placeSymbolBucket(const BucketPlacementData& params, std::set<ui
 
     symbolBucket.justReloaded = false;
 
->>>>>>> Stashed changes
     // As long as this placement lives, we have to hold onto this bucket's
     // matching FeatureIndex/data for querying purposes
     retainedQueryData.emplace(
@@ -977,7 +971,7 @@ void Placement::updateBucketOpacities(SymbolBucket& bucket,
             const auto& opacityVertex =
                 SymbolIconProgram::opacityVertex(opacityState.icon.placed, opacityState.icon.opacity);
             auto& iconBuffer = symbolInstance.hasSdfIcon() ? bucket.sdfIcon : bucket.icon;
-            
+
             if (symbolInstance.placedIconIndex) {
                 iconOpacityVerticesSize += symbolInstance.iconQuadsSize * 4;
                 iconBuffer.placedSymbols[*symbolInstance.placedIconIndex].hidden = opacityState.isHidden();
@@ -1214,7 +1208,7 @@ const std::vector<PlacedSymbolData>& Placement::getPlacedSymbolsData() const {
 const CollisionIndex& Placement::getCollisionIndex() const {
     return collisionIndex;
 }
-    
+
 const RetainedQueryData& Placement::getQueryData(uint32_t bucketInstanceId) const {
     auto it = retainedQueryData.find(bucketInstanceId);
     if (it == retainedQueryData.end()) {
