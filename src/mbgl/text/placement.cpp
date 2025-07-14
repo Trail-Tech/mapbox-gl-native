@@ -241,9 +241,19 @@ void Placement::placeSymbolBucket(const BucketPlacementData& params, std::set<ui
     for (const SymbolInstance& symbol : getSortedSymbols(params, ctx.pixelRatio)) {
         if (seenCrossTileIDs.count(symbol.crossTileID) != 0u) continue;
         placeSymbol(symbol, ctx);
+<<<<<<< Updated upstream
         seenCrossTileIDs.insert(symbol.crossTileID);
     }
 
+=======
+        if (symbol.crossTileID != SymbolInstance::invalidCrossTileID() && !ctx.getRenderTile().holdForFade()) {
+            seenCrossTileIDs.insert(symbol.crossTileID);
+        }
+    }
+
+    symbolBucket.justReloaded = false;
+
+>>>>>>> Stashed changes
     // As long as this placement lives, we have to hold onto this bucket's
     // matching FeatureIndex/data for querying purposes
     retainedQueryData.emplace(
@@ -906,8 +916,8 @@ void Placement::updateBucketOpacities(SymbolBucket& bucket,
     // with allow-overlap: false.
     // See https://github.com/mapbox/mapbox-gl-native/issues/12483
     const JointOpacityState defaultOpacityState(
-            textAllowOverlap && (iconAllowOverlap || !(bucket.hasIconData() || bucket.hasSdfIconData()) || bucket.layout->get<style::IconOptional>()),
-            iconAllowOverlap && (textAllowOverlap || !bucket.hasTextData() || bucket.layout->get<style::TextOptional>()),
+            bucket.justReloaded && textAllowOverlap && (iconAllowOverlap || !(bucket.hasIconData() || bucket.hasSdfIconData()) || bucket.layout->get<style::IconOptional>()),
+            bucket.justReloaded && iconAllowOverlap && (textAllowOverlap || !bucket.hasTextData() || bucket.layout->get<style::TextOptional>()),
             true);
 
     for (SymbolInstance& symbolInstance : bucket.symbolInstances) {

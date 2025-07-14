@@ -424,7 +424,7 @@ void RenderSymbolLayer::render(PaintParameters& parameters) {
         assert(bucket.paintProperties.find(getID()) != bucket.paintProperties.end());
         const auto& bucketPaintProperties = bucket.paintProperties.at(getID());
 
-        bucket.justReloaded = false;
+        // bucket.justReloaded = false;
 
         auto addRenderables = [&renderableSegments, &tile, renderData, &bucketPaintProperties, it = renderableSegments.begin()] (auto& segments, const SymbolType type) mutable {
             for (auto& segment : segments) {
